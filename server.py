@@ -254,12 +254,16 @@ class EngineService:
             ]
 
             assets = [
-                {"name": "Pump-03 (P-104)", "type": "pump", "health": 72 if self.mode == "normal" else 42, "vib": cur_vib, "temp": cur_temp, "status": "Warning" if self.mode == "normal" else "Critical"},
-                {"name": "Gearbox-02 (G-207)", "type": "gearbox", "health": 54, "vib": 7.21, "temp": 92.6, "status": "Critical"},
-                {"name": "Motor-01 (M-301)", "type": "motor", "health": 88, "vib": 2.14, "temp": 61.2, "status": "Healthy"},
-                {"name": "Compressor-01 (C-112)", "type": "compressor", "health": 76, "vib": 3.37, "temp": 74.8, "status": "Healthy"},
-                {"name": "Turbine-02 (T-502)", "type": "turbine", "health": 91, "vib": 1.92, "temp": 58.3, "status": "Healthy"},
-                {"name": "Fan-04 (F-404)", "type": "fan", "health": 68, "vib": 5.16, "temp": 72.1, "status": "At Risk"},
+                {"id": "P-104", "name": "Pump-03 (P-104)", "type": "pump", "typeName": "Slurry Feed Pump", "location": "Processing Bay 1", "rpm": 1450, "installed": "2023-04-12", "health": 72 if self.mode == "normal" else 42, "vib": cur_vib, "temp": cur_temp, "current": 18.4, "acoustic": 74.2, "status": "Warning" if self.mode == "normal" else "Critical"},
+                {"id": "G-207", "name": "Gearbox-02 (G-207)", "type": "gearbox", "typeName": "Helical Speed Reducer", "location": "Drive Train B", "rpm": 850, "installed": "2022-09-18", "health": 54, "vib": 7.21, "temp": 92.6, "current": 32.1, "acoustic": 86.4, "status": "Critical"},
+                {"id": "M-301", "name": "Motor-01 (M-301)", "type": "motor", "typeName": "Induction Motor 450kW", "location": "Intake Hall", "rpm": 2980, "installed": "2024-01-10", "health": 88, "vib": 2.14, "temp": 61.2, "current": 14.2, "acoustic": 66.8, "status": "Healthy"},
+                {"id": "C-112", "name": "Compressor-01 (C-112)", "type": "compressor", "typeName": "Rotary Screw Compressor", "location": "Utility House 2", "rpm": 3600, "installed": "2023-11-05", "health": 76, "vib": 3.37, "temp": 74.8, "current": 22.0, "acoustic": 71.5, "status": "Healthy"},
+                {"id": "T-502", "name": "Turbine-02 (T-502)", "type": "turbine", "typeName": "Gas Expansion Turbine", "location": "Power Unit 1", "rpm": 5400, "installed": "2021-08-22", "health": 91, "vib": 1.92, "temp": 58.3, "current": 45.6, "acoustic": 64.0, "status": "Healthy"},
+                {"id": "F-404", "name": "Fan-04 (F-404)", "type": "fan", "typeName": "Cooling Tower Draft Fan", "location": "Rooftop Bank A", "rpm": 1180, "installed": "2022-05-30", "health": 68, "vib": 5.16, "temp": 72.1, "current": 16.8, "acoustic": 78.9, "status": "At Risk"},
+                {"id": "H-101", "name": "Hydraulic-01 (H-101)", "type": "hydraulic", "typeName": "High-Pressure Hydraulic Pack", "location": "Press Line 3", "rpm": 1750, "installed": "2023-06-14", "health": 84, "vib": 2.80, "temp": 64.0, "current": 19.5, "acoustic": 68.2, "status": "Healthy"},
+                {"id": "P-101", "name": "Pump-01 (P-101)", "type": "pump", "typeName": "Boiler Feedwater Pump", "location": "Boiler House", "rpm": 2900, "installed": "2024-02-18", "health": 89, "vib": 1.85, "temp": 60.1, "current": 12.8, "acoustic": 65.1, "status": "Healthy"},
+                {"id": "M-404", "name": "Motor-04 (M-404)", "type": "motor", "typeName": "Kiln Variable Speed Motor", "location": "Kiln Zone 2", "rpm": 1420, "installed": "2022-12-01", "health": 71, "vib": 4.20, "temp": 70.5, "current": 24.3, "acoustic": 73.4, "status": "At Risk"},
+                {"id": "C-202", "name": "Conveyor-02 (C-202)", "type": "conveyor", "typeName": "Overland Belt Conveyor Drive", "location": "Bulk Transfer Yard", "rpm": 980, "installed": "2023-08-09", "health": 93, "vib": 1.65, "temp": 56.0, "current": 15.2, "acoustic": 62.5, "status": "Healthy"},
             ]
 
             return {
@@ -346,6 +350,18 @@ class MachinaHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(data).encode("utf-8"))
             return
 
+        if path == "/chaos_report.csv" or path == "/api/chaos_report.csv":
+            csv_path = BASE_DIR / "chaos_report.csv"
+            if csv_path.is_file():
+                content = csv_path.read_bytes()
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "text/csv")
+                self.send_header("Content-Disposition", 'attachment; filename="chaos_report.csv"')
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         # Serve static files
         if path == "/" or path == "":
             file_path = STATIC_DIR / "index.html"
@@ -381,6 +397,18 @@ class MachinaHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "mode": mode}).encode("utf-8"))
+            except Exception as e:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(e))
+        elif parsed.path == "/api/settings":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+            try:
+                payload = json.loads(body)
+                LOGGER.info("Updated settings: %s", payload)
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "message": "Settings saved successfully"}).encode("utf-8"))
             except Exception as e:
                 self.send_error(HTTPStatus.BAD_REQUEST, str(e))
         else:

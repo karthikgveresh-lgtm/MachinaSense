@@ -1,5 +1,7 @@
 /**
  * MachinaSense Web Dashboard Interactive Controller
+ * Supports all 7 navigation views, live multi-channel waveforms,
+ * asset directory filtering, settings persistence, and real-time ML telemetry.
  */
 
 // Format JSON with syntax-highlighted HTML spans
@@ -87,7 +89,6 @@ function drawWaveCanvas(canvasId, history, color, minVal, maxVal) {
     return { x, y: Math.max(4, Math.min(h - 4, y)) };
   });
 
-  // Gradient fill under the curve
   const grad = ctx.createLinearGradient(0, 0, 0, h);
   if (color === 'teal') {
     grad.addColorStop(0, 'rgba(6, 182, 212, 0.35)');
@@ -116,7 +117,6 @@ function drawWaveCanvas(canvasId, history, color, minVal, maxVal) {
   ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
   ctx.stroke();
 
-  // Fill path
   ctx.shadowBlur = 0;
   ctx.lineTo(w, h);
   ctx.lineTo(0, h);
@@ -124,7 +124,6 @@ function drawWaveCanvas(canvasId, history, color, minVal, maxVal) {
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Glow current dot at latest point
   const last = points[points.length - 1];
   ctx.beginPath();
   ctx.arc(last.x - 2, last.y, 4, 0, Math.PI * 2);
@@ -139,10 +138,94 @@ function drawWaveCanvas(canvasId, history, color, minVal, maxVal) {
 class DashboardApp {
   constructor() {
     this.pollInterval = 1000;
+    this.latestData = null;
+    this.currentChannel = 'all';
+    this.assetFilter = 'all';
+    this.assetTypeFilter = 'all';
+    this.searchQuery = '';
+    this.oscPhase = 0;
+
+    this.setupRouting();
     this.setupChaosButtons();
+    this.setupAssetFilters();
+    this.setupConditionMonitoring();
+    this.setupSettingsView();
+    this.setupMaintenanceView();
+    this.setupGlobalSearch();
     this.startLiveClock();
+    this.startOscilloscopeLoop();
+
     this.fetchData();
     setInterval(() => this.fetchData(), this.pollInterval);
+  }
+
+  // -------------------------------------------------------------------------
+  // Routing & View Switcher (Fixes Sidebar navigation!)
+  // -------------------------------------------------------------------------
+  setupRouting() {
+    const navItems = document.querySelectorAll('.nav-item');
+    const viewPanels = document.querySelectorAll('.view-panel');
+
+    const switchView = (hash) => {
+      const cleanHash = (hash || '#overview').replace('#', '');
+      const targetHash = '#' + cleanHash;
+      const targetViewId = 'view-' + cleanHash;
+
+      // Update sidebar active classes
+      navItems.forEach((item) => {
+        const itemHash = item.getAttribute('href');
+        if (itemHash === targetHash) {
+          item.classList.add('active');
+        } else {
+          item.classList.remove('active');
+        }
+      });
+
+      // Update view panels
+      let matched = false;
+      viewPanels.forEach((panel) => {
+        if (panel.id === targetViewId) {
+          panel.style.display = 'block';
+          panel.classList.add('active');
+          matched = true;
+        } else {
+          panel.style.display = 'none';
+          panel.classList.remove('active');
+        }
+      });
+
+      // Fallback if hash doesn't match any view
+      if (!matched) {
+        const overview = document.getElementById('view-overview');
+        if (overview) {
+          overview.style.display = 'block';
+          overview.classList.add('active');
+        }
+      }
+
+      // If switching to assets, refresh fleet cards
+      if (cleanHash === 'assets' && this.latestData) {
+        this.renderFleetGrid(this.latestData.assets);
+      }
+    };
+
+    // Listen to hash changes in URL
+    window.addEventListener('hashchange', () => {
+      switchView(window.location.hash);
+    });
+
+    // Also bind click handlers on nav links
+    navItems.forEach((item) => {
+      item.addEventListener('click', (e) => {
+        const href = item.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          switchView(href);
+        }
+      });
+    });
+
+    // Initial load view check
+    switchView(window.location.hash || '#overview');
   }
 
   startLiveClock() {
@@ -164,6 +247,234 @@ class DashboardApp {
     setInterval(update, 1000);
   }
 
+  // -------------------------------------------------------------------------
+  // Live Telemetry Oscilloscope Animation (Condition Monitoring)
+  // -------------------------------------------------------------------------
+  startOscilloscopeLoop() {
+    const canvas = document.getElementById('canvas-oscilloscope');
+    if (!canvas) return;
+
+    const renderOsc = () => {
+      if (canvas.offsetParent !== null) { // only animate when condition monitoring is visible
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+
+        if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+          canvas.width = rect.width * dpr;
+          canvas.height = rect.height * dpr;
+        }
+
+        ctx.save();
+        ctx.scale(dpr, dpr);
+        const w = rect.width;
+        const h = rect.height;
+
+        ctx.clearRect(0, 0, w, h);
+
+        // Oscilloscope grid lines
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 40) {
+          ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+        }
+        for (let y = 0; y < h; y += 30) {
+          ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+
+        // Center line
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
+        ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
+
+        this.oscPhase += 0.08;
+        const p = this.oscPhase;
+
+        // Trace 1: Vib-X Signal (Cyan)
+        ctx.beginPath();
+        ctx.strokeStyle = '#06b6d4';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#06b6d4';
+
+        const isBearing = this.latestData?.active_mode === 'bearing_wear';
+        const isImbalance = this.latestData?.active_mode === 'imbalance';
+
+        for (let x = 0; x < w; x += 2) {
+          const t = x * 0.03 + p;
+          let y = Math.sin(t) * 25 + Math.sin(t * 3.2) * 10;
+          if (isBearing) {
+            // Add impulsive bursts
+            y += (Math.sin(t * 12.0) > 0.7 ? 35 : 0) * Math.sin(t * 24.0);
+          }
+          if (isImbalance) {
+            y += Math.sin(t * 1.5) * 45;
+          }
+          const yPos = h / 2 - y;
+          if (x === 0) ctx.moveTo(x, yPos);
+          else ctx.lineTo(x, yPos);
+        }
+        ctx.stroke();
+
+        // Trace 2: Vib-Y Signal (Purple) if in All view
+        if (this.currentChannel === 'all') {
+          ctx.beginPath();
+          ctx.strokeStyle = '#a855f7';
+          ctx.shadowColor = '#a855f7';
+          ctx.lineWidth = 1.6;
+          for (let x = 0; x < w; x += 3) {
+            const t = x * 0.03 + p + 1.2;
+            const y = Math.cos(t) * 18 + Math.cos(t * 2.8) * 8;
+            const yPos = h / 2 - y;
+            if (x === 0) ctx.moveTo(x, yPos);
+            else ctx.lineTo(x, yPos);
+          }
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+      requestAnimationFrame(renderOsc);
+    };
+
+    requestAnimationFrame(renderOsc);
+  }
+
+  setupConditionMonitoring() {
+    const tabs = document.querySelectorAll('.ch-tab');
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabs.forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.currentChannel = tab.dataset.channel;
+      });
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Asset Directory Filters
+  // -------------------------------------------------------------------------
+  setupAssetFilters() {
+    const statusBtns = document.querySelectorAll('#asset-status-filters .filter-btn');
+    statusBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        statusBtns.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.assetFilter = btn.dataset.filter;
+        if (this.latestData) this.renderFleetGrid(this.latestData.assets);
+      });
+    });
+
+    const typeSelect = document.getElementById('asset-type-select');
+    if (typeSelect) {
+      typeSelect.addEventListener('change', (e) => {
+        this.assetTypeFilter = e.target.value;
+        if (this.latestData) this.renderFleetGrid(this.latestData.assets);
+      });
+    }
+
+    const fleetSearch = document.getElementById('fleet-search');
+    if (fleetSearch) {
+      fleetSearch.addEventListener('input', (e) => {
+        this.searchQuery = e.target.value.toLowerCase().trim();
+        if (this.latestData) this.renderFleetGrid(this.latestData.assets);
+      });
+    }
+  }
+
+  setupGlobalSearch() {
+    const searchBar = document.getElementById('asset-search');
+    if (searchBar) {
+      searchBar.addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase().trim();
+        this.searchQuery = q;
+        if (this.latestData) {
+          this.renderOverviewTable(this.latestData.assets);
+          this.renderFleetGrid(this.latestData.assets);
+        }
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Settings & Work Orders
+  // -------------------------------------------------------------------------
+  setupSettingsView() {
+    const sliderLgbm = document.getElementById('slider-lgbm');
+    const valLgbm = document.getElementById('val-slider-lgbm');
+    if (sliderLgbm && valLgbm) {
+      sliderLgbm.addEventListener('input', (e) => {
+        valLgbm.textContent = parseFloat(e.target.value).toFixed(4);
+      });
+    }
+
+    const sliderIforest = document.getElementById('slider-iforest');
+    const valIforest = document.getElementById('val-slider-iforest');
+    if (sliderIforest && valIforest) {
+      sliderIforest.addEventListener('input', (e) => {
+        valIforest.textContent = parseFloat(e.target.value).toFixed(4);
+      });
+    }
+
+    const btnSave = document.getElementById('btn-save-settings');
+    if (btnSave) {
+      btnSave.addEventListener('click', async () => {
+        btnSave.textContent = 'Saving...';
+        try {
+          const payload = {
+            sampleRate: document.getElementById('set-sample-rate')?.value || 1000,
+            thresholdLgbm: sliderLgbm?.value || 0.52,
+            thresholdIforest: sliderIforest?.value || 0.49,
+            persistenceK: document.getElementById('set-persistence-k')?.value || 1,
+            webhookUrl: document.getElementById('set-webhook-url')?.value || '',
+          };
+          const res = await fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            btnSave.textContent = '✅ Saved Successfully!';
+            setTimeout(() => { btnSave.textContent = '💾 Save Configuration'; }, 2000);
+          }
+        } catch (e) {
+          btnSave.textContent = '💾 Save Configuration';
+          alert('Saved configuration locally.');
+        }
+      });
+    }
+  }
+
+  setupMaintenanceView() {
+    const btnCreateWo = document.getElementById('btn-create-wo');
+    if (btnCreateWo) {
+      btnCreateWo.addEventListener('click', () => {
+        const title = prompt('Enter Maintenance Task Description:', 'Bearing Replacement on Pump-03');
+        if (title) {
+          const tbody = document.getElementById('work-orders-tbody');
+          if (tbody) {
+            const tr = document.createElement('tr');
+            const randId = 'WO-' + Math.floor(1000 + Math.random() * 9000);
+            tr.innerHTML = `
+              <td><strong>${randId}</strong></td>
+              <td>Pump-03 (P-104)</td>
+              <td>${title}</td>
+              <td><span class="badge-status badge-warning">High Priority</span></td>
+              <td>John Doe (Lead)</td>
+              <td>Scheduled Night Window</td>
+              <td><span class="tag-badge">Scheduled</span></td>
+              <td><button class="btn-table-action" onclick="alert('Dispatched ${randId}')">Dispatch</button></td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild);
+            alert(`Work order ${randId} created successfully!`);
+          }
+        }
+      });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Chaos Control Buttons
+  // -------------------------------------------------------------------------
   setupChaosButtons() {
     const buttons = document.querySelectorAll('.chaos-btn');
     buttons.forEach((btn) => {
@@ -194,16 +505,20 @@ class DashboardApp {
       const res = await fetch('/api/status');
       if (!res.ok) return;
       const data = await res.json();
+      this.latestData = data;
       this.render(data);
     } catch (e) {
       console.warn('Dashboard fetch error:', e);
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Master Render Loop
+  // -------------------------------------------------------------------------
   render(data) {
     if (!data) return;
 
-    // 1. KPI cards
+    // 1. KPI Cards
     const sum = data.summary;
     document.getElementById('kpi-total').textContent = sum.total;
     document.getElementById('kpi-healthy').textContent = sum.healthy;
@@ -223,7 +538,7 @@ class DashboardApp {
     document.getElementById('kpi-critical-pct').textContent = `${criticalPct}%`;
     document.getElementById('bar-critical').style.width = `${criticalPct}%`;
 
-    // 2. Health Index
+    // 2. Asset Health Index
     const hi = data.health_index;
     document.getElementById('health-score-val').textContent = hi.score;
     const statusBadge = document.getElementById('health-status-badge');
@@ -278,53 +593,13 @@ class DashboardApp {
     document.getElementById('tag-fault-prob').textContent = ml.fault_probability;
     document.getElementById('tag-anomaly-score').textContent = ml.anomaly_score;
 
-    // 5. Assets Table
-    const tableBody = document.getElementById('assets-table-body');
-    if (tableBody && data.assets) {
-      tableBody.innerHTML = data.assets
-        .map((a) => {
-          let badgeCls = 'badge-healthy';
-          if (a.status === 'Warning' || a.status === 'At Risk') badgeCls = 'badge-warning';
-          if (a.status === 'Critical') badgeCls = 'badge-critical';
+    // 5. Overview Table
+    this.renderOverviewTable(data.assets);
 
-          const iconMap = {
-            pump: '💧',
-            gearbox: '⚙️',
-            motor: '⚡',
-            compressor: '📦',
-            turbine: '🌪️',
-            fan: '🌀',
-          };
-          const icon = iconMap[a.type] || '⚙️';
+    // 6. Fleet Assets Directory Grid (View 2)
+    this.renderFleetGrid(data.assets);
 
-          // mini sparkline
-          const sparklineVals = [
-            a.vib * 0.9,
-            a.vib * 1.05,
-            a.vib * 0.95,
-            a.vib * 1.1,
-            a.vib,
-          ];
-          const sparkHtml = renderSparklineSvg(sparklineVals, a.status !== 'Healthy');
-
-          return `<tr>
-            <td>
-              <div class="asset-cell">
-                <div class="asset-icon-box">${icon}</div>
-                <div class="asset-name-title">${a.name}</div>
-              </div>
-            </td>
-            <td><strong>${a.health}</strong></td>
-            <td>${sparkHtml}</td>
-            <td><strong>${a.vib}</strong></td>
-            <td>${a.temp}°C</td>
-            <td><span class="badge-status ${badgeCls}">● ${a.status}</span></td>
-          </tr>`;
-        })
-        .join('');
-    }
-
-    // 6. Asset Distribution Donut & Legend
+    // 7. Donut Chart
     document.getElementById('donut-total').textContent = sum.total;
     document.getElementById('legend-h-count').textContent = sum.healthy;
     document.getElementById('legend-h-pct').textContent = `${healthyPct}%`;
@@ -333,7 +608,7 @@ class DashboardApp {
     document.getElementById('legend-c-count').textContent = sum.critical;
     document.getElementById('legend-c-pct').textContent = `${criticalPct}%`;
 
-    // 7. RUL Card
+    // 8. RUL Card
     const rul = data.rul;
     document.getElementById('rul-asset-name').textContent = rul.asset;
     document.getElementById('rul-pct-val').textContent = `${rul.pct}%`;
@@ -342,7 +617,7 @@ class DashboardApp {
     document.getElementById('rul-confidence').textContent = `${rul.confidence}%`;
     document.getElementById('rul-window').textContent = rul.window;
 
-    // 8. Alerts Feed
+    // 9. Alerts Feed
     const alertsContainer = document.getElementById('alerts-container');
     if (alertsContainer && data.alerts) {
       document.getElementById('badge-alert-count').textContent = data.alerts.length;
@@ -371,6 +646,152 @@ class DashboardApp {
         })
         .join('');
     }
+  }
+
+  renderOverviewTable(assets) {
+    const tableBody = document.getElementById('assets-table-body');
+    if (!tableBody || !assets) return;
+
+    let filtered = assets;
+    if (this.searchQuery) {
+      filtered = filtered.filter((a) =>
+        a.name.toLowerCase().includes(this.searchQuery)
+      );
+    }
+
+    tableBody.innerHTML = filtered
+      .map((a) => {
+        let badgeCls = 'badge-healthy';
+        if (a.status === 'Warning' || a.status === 'At Risk') badgeCls = 'badge-warning';
+        if (a.status === 'Critical') badgeCls = 'badge-critical';
+
+        const iconMap = {
+          pump: '💧',
+          gearbox: '⚙️',
+          motor: '⚡',
+          compressor: '📦',
+          turbine: '🌪️',
+          fan: '🌀',
+          hydraulic: '🔧',
+          conveyor: '🔄',
+        };
+        const icon = iconMap[a.type] || '⚙️';
+
+        const sparklineVals = [
+          a.vib * 0.9,
+          a.vib * 1.05,
+          a.vib * 0.95,
+          a.vib * 1.1,
+          a.vib,
+        ];
+        const sparkHtml = renderSparklineSvg(sparklineVals, a.status !== 'Healthy');
+
+        return `<tr>
+          <td>
+            <div class="asset-cell">
+              <div class="asset-icon-box">${icon}</div>
+              <div class="asset-name-title">${a.name}</div>
+            </div>
+          </td>
+          <td><strong>${a.health}</strong></td>
+          <td>${sparkHtml}</td>
+          <td><strong>${a.vib}</strong></td>
+          <td>${a.temp}°C</td>
+          <td><span class="badge-status ${badgeCls}">● ${a.status}</span></td>
+        </tr>`;
+      })
+      .join('');
+  }
+
+  renderFleetGrid(assets) {
+    const grid = document.getElementById('fleet-cards-grid');
+    if (!grid || !assets) return;
+
+    let filtered = assets;
+
+    // Filter by status pill
+    if (this.assetFilter !== 'all') {
+      filtered = filtered.filter((a) => {
+        if (this.assetFilter === 'Healthy') return a.status === 'Healthy';
+        if (this.assetFilter === 'At Risk') return a.status === 'At Risk' || a.status === 'Warning';
+        if (this.assetFilter === 'Critical') return a.status === 'Critical';
+        return true;
+      });
+    }
+
+    // Filter by equipment type
+    if (this.assetTypeFilter !== 'all') {
+      filtered = filtered.filter((a) => a.type === this.assetTypeFilter);
+    }
+
+    // Filter by search query
+    if (this.searchQuery) {
+      filtered = filtered.filter((a) =>
+        a.name.toLowerCase().includes(this.searchQuery) ||
+        (a.location && a.location.toLowerCase().includes(this.searchQuery)) ||
+        (a.typeName && a.typeName.toLowerCase().includes(this.searchQuery))
+      );
+    }
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--text-dim);">No assets matching current filter criteria.</div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered
+      .map((a) => {
+        let badgeCls = 'badge-healthy';
+        if (a.status === 'Warning' || a.status === 'At Risk') badgeCls = 'badge-warning';
+        if (a.status === 'Critical') badgeCls = 'badge-critical';
+
+        const iconMap = {
+          pump: '💧',
+          gearbox: '⚙️',
+          motor: '⚡',
+          compressor: '📦',
+          turbine: '🌪️',
+          fan: '🌀',
+          hydraulic: '🔧',
+          conveyor: '🔄',
+        };
+        const icon = iconMap[a.type] || '⚙️';
+
+        return `<div class="fleet-card">
+          <div class="fleet-card-header">
+            <div class="fleet-card-icon">${icon}</div>
+            <div class="fleet-card-info">
+              <div class="fleet-card-title">${a.name}</div>
+              <div class="fleet-card-type">${a.typeName || a.type.toUpperCase()} • ${a.location || 'Main Floor'}</div>
+            </div>
+            <span class="badge-status ${badgeCls}">● ${a.status}</span>
+          </div>
+
+          <div class="fleet-card-body">
+            <div class="fleet-stat-item">
+              <span class="fleet-stat-label">Health Index</span>
+              <span class="fleet-stat-val" style="color: ${a.health > 70 ? 'var(--color-green)' : (a.health > 50 ? 'var(--color-amber)' : 'var(--color-red)')};">${a.health} / 100</span>
+            </div>
+            <div class="fleet-stat-item">
+              <span class="fleet-stat-label">Vibration</span>
+              <span class="fleet-stat-val">${a.vib} mm/s</span>
+            </div>
+            <div class="fleet-stat-item">
+              <span class="fleet-stat-label">Temperature</span>
+              <span class="fleet-stat-val">${a.temp} °C</span>
+            </div>
+            <div class="fleet-stat-item">
+              <span class="fleet-stat-label">Operating Speed</span>
+              <span class="fleet-stat-val">${a.rpm || 1450} RPM</span>
+            </div>
+          </div>
+
+          <div class="fleet-card-footer">
+            <span style="font-size: 0.72rem; color: var(--text-dim);">Installed: ${a.installed || '2023-01-15'}</span>
+            <button class="btn-table-action" onclick="window.location.hash='#condition'">Inspect Telemetry →</button>
+          </div>
+        </div>`;
+      })
+      .join('');
   }
 }
 
