@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MachinaSense | Industrial Asset Intelligence</title>
+  <meta name="description" content="MachinaSense real-time condition monitoring, predictive maintenance, and early warning intelligence platform.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Interactive Chaos Control Banner -->
+  <div class="chaos-banner">
+    <div class="chaos-banner-inner">
+      <div class="chaos-tag">
+        <span class="chaos-pulse"></span>
+        <strong>LIVE TESTING CONSOLE</strong>
+        <span class="chaos-badge-model">LightGBM + IsolationForest</span>
+      </div>
+      <div class="chaos-buttons" id="chaos-btn-group">
+        <button class="chaos-btn active" data-mode="normal" id="btn-mode-normal">🟢 Normal Steady State</button>
+        <button class="chaos-btn" data-mode="bearing_wear" id="btn-mode-bearing">⚠️ Bearing Wear (Bursts)</button>
+        <button class="chaos-btn" data-mode="imbalance" id="btn-mode-imbalance">⚠️ Imbalance Fault (1x Harmonic)</button>
+        <button class="chaos-btn" data-mode="dropout" id="btn-mode-dropout">⚡ 10% Sensor Dropouts</button>
+        <button class="chaos-btn" data-mode="dead_sensor" id="btn-mode-dead">🔇 Dead Sensor (vib_x)</button>
+        <button class="chaos-btn" data-mode="noise" id="btn-mode-noise">💥 Gaussian Noise (1.0σ)</button>
+      </div>
+      <div class="chaos-status" id="chaos-mode-label">Regime: <strong>Normal</strong></div>
+    </div>
+  </div>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-name">MachinaSense</div>
+          <div class="brand-sub">Predict • Prevent • Perform</div>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <a href="#overview" class="nav-item active" id="nav-overview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          <span>Overview</span>
+        </a>
+        <a href="#assets" class="nav-item" id="nav-assets">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>Assets</span>
+        </a>
+        <a href="#condition" class="nav-item" id="nav-condition">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span>Condition Monitoring</span>
+        </a>
+        <a href="#predictive" class="nav-item" id="nav-predictive">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"></path><path d="M18 20V4"></path><path d="M6 20v-4"></path></svg>
+          <span>Predictive Analytics</span>
+        </a>
+        <a href="#maintenance" class="nav-item" id="nav-maintenance">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+          <span>Maintenance</span>
+        </a>
+        <a href="#reports" class="nav-item" id="nav-reports">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <span>Reports</span>
+        </a>
+        <a href="#settings" class="nav-item" id="nav-settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+
+      <div class="system-status-box">
+        <div class="system-status-dot"></div>
+        <div class="system-status-text">
+          <div class="system-status-title">System Online</div>
+          <div class="system-status-desc">All systems operational</div>
+        </div>
+        <div class="system-status-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"></rect><rect x="2" y="14" width="20" height="8" rx="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top Header -->
+      <header class="top-header">
+        <div class="search-bar">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" id="asset-search" placeholder="Search assets, equipment, or serial number..." />
+        </div>
+
+        <div class="user-controls">
+          <div class="notification-btn" id="btn-notifications">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span class="notification-badge" id="badge-alert-count">3</span>
+          </div>
+
+          <div class="user-profile">
+            <div class="user-avatar">JD</div>
+            <div class="user-info">
+              <div class="user-name">John Doe</div>
+              <div class="user-role">Engineering Manager</div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard Body Grid -->
+      <div class="content-body">
+        <div class="dashboard-columns">
+          <div class="dashboard-left-col">
+            <!-- Page Title & Meta -->
+            <div class="page-title-row">
+          <div>
+            <h1 class="page-title">Industrial Asset Intelligence</h1>
+            <p class="page-subtitle">Real-time monitoring. Predictive insights. Maximum uptime.</p>
+          </div>
+          <div class="page-time-meta">
+            <span class="meta-clock" id="live-clock">Apr 26, 2025 14:32:17</span>
+            <span class="live-pill"><span class="live-indicator-dot"></span> Live Data</span>
+          </div>
+        </div>
+
+        <!-- 4 KPI Summary Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon kpi-icon-cyan">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+              </div>
+              <span class="kpi-title">Total Assets</span>
+            </div>
+            <div class="kpi-value" id="kpi-total">48</div>
+            <div class="kpi-change kpi-change-up">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>
+              <span>2 since last 24h</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon kpi-icon-green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </div>
+              <span class="kpi-title">Healthy Assets</span>
+            </div>
+            <div class="kpi-value" id="kpi-healthy">38</div>
+            <div class="kpi-progress-wrap">
+              <span class="kpi-pct" id="kpi-healthy-pct">79.2%</span>
+              <div class="kpi-progress-bar"><div class="kpi-progress-fill fill-green" id="bar-healthy" style="width: 79.2%"></div></div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon kpi-icon-amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              </div>
+              <span class="kpi-title">At Risk</span>
+            </div>
+            <div class="kpi-value" id="kpi-risk">7</div>
+            <div class="kpi-progress-wrap">
+              <span class="kpi-pct" id="kpi-risk-pct">14.6%</span>
+              <div class="kpi-progress-bar"><div class="kpi-progress-fill fill-amber" id="bar-risk" style="width: 14.6%"></div></div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <div class="kpi-icon kpi-icon-red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+              </div>
+              <span class="kpi-title">Critical</span>
+            </div>
+            <div class="kpi-value" id="kpi-critical">3</div>
+            <div class="kpi-progress-wrap">
+              <span class="kpi-pct" id="kpi-critical-pct">6.2%</span>
+              <div class="kpi-progress-bar"><div class="kpi-progress-fill fill-red" id="bar-critical" style="width: 6.2%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Row: Health Index & Real-Time Sensor Trends -->
+        <div class="middle-grid">
+          <!-- Asset Health Index -->
+          <div class="panel-card health-index-card">
+            <div class="panel-title">MachinaSense Asset Health Index</div>
+            <div class="health-index-body">
+              <div class="health-gauge-box">
+                <svg class="health-radial" viewBox="0 0 120 120">
+                  <circle class="radial-track" cx="60" cy="60" r="50"></circle>
+                  <circle class="radial-value" id="radial-gauge-circle" cx="60" cy="60" r="50" style="stroke-dashoffset: 69;"></circle>
+                </svg>
+                <div class="radial-center-text">
+                  <div class="radial-score" id="health-score-val">78</div>
+                  <div class="radial-scale">/100</div>
+                  <div class="radial-status-badge" id="health-status-badge">Good</div>
+                </div>
+              </div>
+
+              <div class="sub-metrics-list">
+                <div class="sub-metric-row">
+                  <div class="sub-metric-meta">
+                    <span class="sub-metric-icon icon-vibe">⚡</span>
+                    <span class="sub-metric-name">Vibration</span>
+                    <span class="sub-metric-val" id="val-sub-vib">85 <small>/100</small></span>
+                  </div>
+                  <div class="sub-progress-bar"><div class="sub-progress-fill" id="fill-sub-vib" style="width: 85%;"></div></div>
+                </div>
+
+                <div class="sub-metric-row">
+                  <div class="sub-metric-meta">
+                    <span class="sub-metric-icon icon-temp">🌡️</span>
+                    <span class="sub-metric-name">Temperature</span>
+                    <span class="sub-metric-val" id="val-sub-temp">76 <small>/100</small></span>
+                  </div>
+                  <div class="sub-progress-bar"><div class="sub-progress-fill" id="fill-sub-temp" style="width: 76%;"></div></div>
+                </div>
+
+                <div class="sub-metric-row">
+                  <div class="sub-metric-meta">
+                    <span class="sub-metric-icon icon-acoustic">🔊</span>
+                    <span class="sub-metric-name">Acoustic</span>
+                    <span class="sub-metric-val" id="val-sub-ac">72 <small>/100</small></span>
+                  </div>
+                  <div class="sub-progress-bar"><div class="sub-progress-fill" id="fill-sub-ac" style="width: 72%;"></div></div>
+                </div>
+
+                <div class="sub-metric-row">
+                  <div class="sub-metric-meta">
+                    <span class="sub-metric-icon icon-load">⚙️</span>
+                    <span class="sub-metric-name">Load</span>
+                    <span class="sub-metric-val" id="val-sub-load">81 <small>/100</small></span>
+                  </div>
+                  <div class="sub-progress-bar"><div class="sub-progress-fill" id="fill-sub-load" style="width: 81%;"></div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="health-footer-diff">
+              <span class="diff-arrow">↑</span>
+              <span id="health-diff-text">+6.3% vs. previous 7 days</span>
+            </div>
+          </div>
+
+          <!-- Real-Time Sensor Trends -->
+          <div class="panel-card sensor-trends-card">
+            <div class="trends-header">
+              <div class="panel-title">Real-Time Sensor Trends</div>
+              <div class="time-pills">
+                <button class="time-pill active" id="pill-1h">1H</button>
+                <button class="time-pill" id="pill-6h">6H</button>
+                <button class="time-pill" id="pill-24h">24H</button>
+                <button class="time-pill" id="pill-7d">7D</button>
+              </div>
+            </div>
+
+            <!-- Vibration Trend -->
+            <div class="trend-section">
+              <div class="trend-meta">
+                <div class="trend-label">
+                  <span class="trend-dot dot-teal"></span>
+                  <span class="trend-name">Vibration (mm/s)</span>
+                </div>
+                <div class="trend-curr">
+                  <span class="pulse-dot"></span> Current <strong id="trend-vib-curr">2.48</strong>
+                </div>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="canvas-vibration" width="600" height="90"></canvas>
+              </div>
+            </div>
+
+            <!-- Temperature Trend -->
+            <div class="trend-section">
+              <div class="trend-meta">
+                <div class="trend-label">
+                  <span class="trend-dot dot-amber"></span>
+                  <span class="trend-name">Temperature (°C)</span>
+                </div>
+                <div class="trend-curr">
+                  <span class="pulse-dot-amber"></span> Current <strong id="trend-temp-curr">68.4</strong>
+                </div>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="canvas-temperature" width="600" height="90"></canvas>
+              </div>
+            </div>
+
+            <!-- ML Live Inference Status Tag -->
+            <div class="ml-live-tag">
+              <div class="ml-tag-item">Model: <strong>LightGBM</strong></div>
+              <div class="ml-tag-item">Predicted Class: <span class="tag-badge" id="tag-pred-class">Normal</span></div>
+              <div class="ml-tag-item">Fault Prob: <strong id="tag-fault-prob">0.02</strong></div>
+              <div class="ml-tag-item">Anomaly Score: <strong id="tag-anomaly-score">0.64</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Grid: Asset Performance & Distribution/RUL & Alerts Feed -->
+        <div class="bottom-grid">
+          <!-- Asset Performance Table -->
+          <div class="panel-card asset-perf-card">
+            <div class="panel-title">Asset Performance</div>
+            <div class="table-container">
+              <table class="assets-table">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Health Index</th>
+                    <th>Trend</th>
+                    <th>Vibration (mm/s)</th>
+                    <th>Temp (°C)</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="assets-table-body">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Asset Distribution & RUL Column -->
+          <div class="dist-rul-col">
+            <!-- Asset Distribution Donut -->
+            <div class="panel-card asset-dist-card">
+              <div class="panel-title">Asset Distribution</div>
+              <div class="donut-wrap">
+                <div class="donut-chart-box">
+                  <svg class="donut-svg" viewBox="0 0 100 100">
+                    <circle class="donut-segment seg-healthy" cx="50" cy="50" r="40" stroke-dasharray="199 251" stroke-dashoffset="0"></circle>
+                    <circle class="donut-segment seg-risk" cx="50" cy="50" r="40" stroke-dasharray="36 251" stroke-dashoffset="-199"></circle>
+                    <circle class="donut-segment seg-critical" cx="50" cy="50" r="40" stroke-dasharray="16 251" stroke-dashoffset="-235"></circle>
+                  </svg>
+                  <div class="donut-center-text">
+                    <div class="donut-number" id="donut-total">48</div>
+                    <div class="donut-label">Total Assets</div>
+                  </div>
+                </div>
+
+                <div class="donut-legend">
+                  <div class="legend-row">
+                    <span class="legend-bullet bullet-healthy"></span>
+                    <span class="legend-name">Healthy</span>
+                    <strong class="legend-count" id="legend-h-count">38</strong>
+                    <span class="legend-pct" id="legend-h-pct">79.2%</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-bullet bullet-risk"></span>
+                    <span class="legend-name">At Risk</span>
+                    <strong class="legend-count" id="legend-r-count">7</strong>
+                    <span class="legend-pct" id="legend-r-pct">14.6%</span>
+                  </div>
+                  <div class="legend-row">
+                    <span class="legend-bullet bullet-critical"></span>
+                    <span class="legend-name">Critical</span>
+                    <strong class="legend-count" id="legend-c-count">3</strong>
+                    <span class="legend-pct" id="legend-c-pct">6.2%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Remaining Useful Life (RUL) -->
+            <div class="panel-card rul-card">
+              <div class="rul-header">
+                <div class="panel-title">Remaining Useful Life (RUL)</div>
+                <a href="#rul" class="view-all-link">View All →</a>
+              </div>
+              <div class="rul-body">
+                <div class="rul-asset-row">
+                  <div class="rul-icon-gear">⚙️</div>
+                  <div class="rul-asset-info">
+                    <div class="rul-asset-name" id="rul-asset-name">Gearbox-02 (G-207)</div>
+                    <div class="rul-metric">
+                      <span class="rul-pct-big" id="rul-pct-val">62%</span>
+                      <small>RUL</small>
+                    </div>
+                  </div>
+                  <div class="rul-estimate-box">
+                    <div class="rul-sub-label">Estimated Remaining Life</div>
+                    <div class="rul-hours" id="rul-hours-val">2,487 hours</div>
+                    <div class="rul-change-up">↑ 12% vs. last 7 days</div>
+                  </div>
+                </div>
+
+                <div class="rul-bar-track">
+                  <div class="rul-bar-fill" id="rul-bar-fill" style="width: 62%;"></div>
+                </div>
+
+                <div class="rul-footer-stats">
+                  <div>Model Confidence: <strong id="rul-confidence">92%</strong></div>
+                  <div>Prediction Window: <strong id="rul-window">3-6 months</strong></div>
+                </div>
+              </div>
+            </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Alerts Feed Right Panel -->
+        <aside class="dashboard-right-col">
+          <div class="panel-card alerts-feed-card">
+            <div class="alerts-feed-header">
+              <div class="panel-title">Active Alerts Feed</div>
+              <a href="#alerts" class="view-all-link">View All →</a>
+            </div>
+            <div class="alerts-list" id="alerts-container">
+              <!-- Dynamically populated alert cards -->
+            </div>
+          </div>
+        </aside>
+      </div><!-- .dashboard-columns -->
+    </div><!-- .content-body -->
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
