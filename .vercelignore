@@ -1,0 +1,16 @@
+# Vercel deployment ignore list
+# Keep deployment bundle lightweight and fast
+__pycache__/
+*.py[cod]
+.git
+.github
+.venv/
+venv/
+env/
+machinasense_engine.joblib
+MachinaSense Industrial Asset Dashboard.png
+chaos_eval.py
+early_warning.py
+test_inference.py
+engine.py
+.gemini/

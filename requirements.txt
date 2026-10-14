@@ -1,0 +1,4 @@
+# MachinaSense Vercel Serverless Requirements
+# Note: The Vercel Serverless runtime uses the Python standard library
+# for ultra-fast builds (<5s) and zero cold-start latency.
+# For local ML model training and chaos benchmarking, install requirements-dev.txt.

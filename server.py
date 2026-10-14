@@ -34,7 +34,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 LOGGER = logging.getLogger("machinasense.server")
 
 BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
+STATIC_DIR = BASE_DIR / "public" if (BASE_DIR / "public").exists() else BASE_DIR / "static"
 
 class EngineService:
     def __init__(self):
@@ -341,8 +341,11 @@ class MachinaHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         path = parsed.path
+        qs = parse_qs(parsed.query)
 
         if path == "/api/status" or path == "/api/telemetry":
+            if "mode" in qs and qs["mode"]:
+                service.set_mode(qs["mode"][0])
             data = service.get_dashboard_state()
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json")
