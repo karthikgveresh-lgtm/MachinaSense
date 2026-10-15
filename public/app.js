@@ -150,7 +150,9 @@ class DashboardApp {
     this.notifFilter = 'all'; // 'all', 'critical', 'warning', 'unread'
     this.readAlertIds = new Set(this.loadFromStorage('machinasense_read_alerts', []));
     this.dismissedAlertIds = new Set(this.loadFromStorage('machinasense_dismissed_alerts', []));
-    this.soundEnabled = this.loadFromStorage('machinasense_sound_enabled', true);
+    // Default to silent delivery without audio noise
+    this.soundEnabled = false;
+    this.saveToStorage('machinasense_sound_enabled', false);
     this.seenAlertSignatures = new Set();
     this.initialAlertsLoaded = false;
     this.activeAlerts = [];
@@ -1242,7 +1244,7 @@ class DashboardApp {
       } else {
         onIcon.style.display = 'none';
         offIcon.style.display = 'inline-block';
-        if (soundBtn) soundBtn.title = 'Unmute Alert Sound';
+        if (soundBtn) soundBtn.title = 'Enable Alert Sound (Muted)';
       }
     }
   }
@@ -1295,8 +1297,11 @@ class DashboardApp {
         void bellBtn.offsetWidth;
         bellBtn.classList.add('has-new-alert');
       }
-      this.playAlertSound(newestAlert.severity);
-      this.showToast(newestAlert);
+      // Deliver quietly without noisy beeps or intrusive popup toasts.
+      // Notifications queue into the bell tray and appear when the user clicks the bell icon.
+      if (this.soundEnabled) {
+        this.playAlertSound(newestAlert.severity);
+      }
     }
 
     this.updateNotificationUI();

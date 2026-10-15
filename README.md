@@ -156,11 +156,12 @@ MachinaSense includes an onboard **Chaos Testing Console** at the top of the int
 
 ---
 
-## 🔔 Integrated Notification Center & Audio Alerts
+## 🔔 Quiet Notification Center & Bell Popover
 
-- **Interactive Bell Dropdown:** Displays unread notification count badge, tabs for `All`, `Critical`, `Warning`, and `Unread`, and one-click "Mark All Read".
-- **Haptic Audio Chime:** Synthesizes clean industrial notification tones via the HTML5 Web Audio API whenever new anomalies trigger.
-- **Floating Toast System:** Non-intrusive bottom-right toast alerts displaying real-time incident diagnostics with direct "Inspect" shortcuts.
+- **Quiet Silent Delivery:** Notifications deliver quietly in the background without noisy beeps, intrusive audio chimes, or screen-blocking popups.
+- **Bell Icon Badge:** The notification bell icon in the top header features a live unread counter badge and subtle alert indicator.
+- **On-Demand Inspection:** Clicking the bell icon opens the glassmorphic **System Alerts Popover** to review active anomalies, filter by `All`, `Critical`, `Warning`, or `Unread`, inspect telemetry, or acknowledge incidents with one click.
+- **Optional Sound Toggle:** An optional mute/unmute toggle in the dropdown header allows operators to enable sound chimes only when desired.
 
 ---
 
