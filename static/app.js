@@ -146,6 +146,17 @@ class DashboardApp {
     this.oscPhase = 0;
     this.activeMode = 'normal';
 
+    // Notification Center State
+    this.notifFilter = 'all'; // 'all', 'critical', 'warning', 'unread'
+    this.readAlertIds = new Set(this.loadFromStorage('machinasense_read_alerts', []));
+    this.dismissedAlertIds = new Set(this.loadFromStorage('machinasense_dismissed_alerts', []));
+    this.soundEnabled = this.loadFromStorage('machinasense_sound_enabled', true);
+    this.seenAlertSignatures = new Set();
+    this.initialAlertsLoaded = false;
+    this.activeAlerts = [];
+    this.expandedPayloads = new Set();
+    this.audioCtx = null;
+
     this.setupRouting();
     this.setupChaosButtons();
     this.setupAssetFilters();
@@ -153,6 +164,7 @@ class DashboardApp {
     this.setupSettingsView();
     this.setupMaintenanceView();
     this.setupGlobalSearch();
+    this.setupNotificationSystem();
     this.startLiveClock();
     this.startOscilloscopeLoop();
 
@@ -781,10 +793,13 @@ class DashboardApp {
     document.getElementById('rul-confidence').textContent = `${rul.confidence}%`;
     document.getElementById('rul-window').textContent = rul.window;
 
-    // 9. Alerts Feed
+    // 9. Alerts Feed & Live Notifications
+    if (data.alerts) {
+      this.handleIncomingAlerts(data.alerts);
+    }
+
     const alertsContainer = document.getElementById('alerts-container');
     if (alertsContainer && data.alerts) {
-      document.getElementById('badge-alert-count').textContent = data.alerts.length;
       alertsContainer.innerHTML = data.alerts
         .map((alt) => {
           let badgeCls = 'badge-alert-warning';
@@ -956,6 +971,520 @@ class DashboardApp {
         </div>`;
       })
       .join('');
+  }
+
+  // -------------------------------------------------------------------------
+  // LocalStorage Helpers
+  // -------------------------------------------------------------------------
+  loadFromStorage(key, fallback) {
+    try {
+      const val = localStorage.getItem(key);
+      return val !== null ? JSON.parse(val) : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
+
+  saveToStorage(key, val) {
+    try {
+      localStorage.setItem(key, JSON.stringify(val));
+    } catch (e) {
+      // Storage unavailable or quota exceeded
+    }
+  }
+
+  getAlertKey(alt) {
+    if (!alt) return '';
+    return `${alt.asset || ''}__${alt.severity || ''}__${alt.issue || ''}`;
+  }
+
+  // -------------------------------------------------------------------------
+  // Web Audio Synthesizer for Alerts
+  // -------------------------------------------------------------------------
+  playAlertSound(severity = 'warning') {
+    if (!this.soundEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!this.audioCtx) {
+        this.audioCtx = new AudioCtx();
+      }
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+
+      const now = this.audioCtx.currentTime;
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
+
+      if (severity === 'Critical') {
+        // Urgent 2-tone alarm beep
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.setValueAtTime(660, now + 0.12);
+        osc.frequency.setValueAtTime(880, now + 0.24);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.38);
+      } else {
+        // Smooth pleasant telemetry chime
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.16); // A5
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    } catch (e) {
+      // Audio playback restrictions prior to user gesture
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Real-Time Toast Notifications
+  // -------------------------------------------------------------------------
+  showToast(alt) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    const isCrit = alt.severity === 'Critical';
+    toast.className = `toast-item ${isCrit ? 'critical' : 'warning'}`;
+
+    const icon = isCrit ? '🛑' : '⚠️';
+    toast.innerHTML = `
+      <div class="toast-icon-wrap">${icon}</div>
+      <div class="toast-content">
+        <div class="toast-title">${isCrit ? 'Critical Anomaly Detected' : 'Operational Warning'}</div>
+        <div class="toast-message"><strong>${alt.asset}</strong>: ${alt.issue}</div>
+        <div class="toast-actions">
+          <button class="toast-btn toast-btn-inspect">Inspect Telemetry →</button>
+          <button class="toast-btn toast-btn-dismiss">Acknowledge</button>
+        </div>
+      </div>
+      <button class="toast-close" title="Dismiss">×</button>
+    `;
+
+    toast.querySelector('.toast-btn-inspect').addEventListener('click', () => {
+      this.navigateToTelemetry(alt);
+      this.removeToast(toast);
+    });
+
+    toast.querySelector('.toast-btn-dismiss').addEventListener('click', () => {
+      const key = this.getAlertKey(alt);
+      this.readAlertIds.add(key);
+      this.saveToStorage('machinasense_read_alerts', Array.from(this.readAlertIds));
+      this.updateNotificationUI();
+      this.removeToast(toast);
+    });
+
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+      this.removeToast(toast);
+    });
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      this.removeToast(toast);
+    }, 4500);
+  }
+
+  removeToast(toast) {
+    if (!toast || toast.classList.contains('hide')) return;
+    toast.classList.add('hide');
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 280);
+  }
+
+  navigateToTelemetry(alt) {
+    window.location.hash = '#condition';
+    // Select channel if applicable
+    if (alt && alt.payload && alt.payload.metric) {
+      let targetChannel = 'all';
+      if (alt.payload.metric.includes('vib')) targetChannel = 'vib_x';
+      else if (alt.payload.metric.includes('temp')) targetChannel = 'temp';
+      else if (alt.payload.metric.includes('cur') || alt.payload.metric.includes('load')) targetChannel = 'current';
+
+      const tab = document.querySelector(`.ch-tab[data-channel="${targetChannel}"]`);
+      if (tab) {
+        document.querySelectorAll('.ch-tab').forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.currentChannel = targetChannel;
+      }
+    }
+    this.closeNotificationDropdown();
+  }
+
+  // -------------------------------------------------------------------------
+  // Notification System Setup & Handlers
+  // -------------------------------------------------------------------------
+  setupNotificationSystem() {
+    const bellBtn = document.getElementById('btn-notifications');
+    const dropdown = document.getElementById('notification-dropdown');
+    const soundBtn = document.getElementById('btn-sound-toggle');
+    const markAllReadBtn = document.getElementById('btn-mark-all-read');
+    const clearReadBtn = document.getElementById('btn-clear-read');
+    const inspectConditionLink = document.getElementById('btn-notif-inspect-condition');
+    const tabButtons = document.querySelectorAll('.notif-tab');
+
+    // Toggle dropdown on bell button click
+    if (bellBtn && dropdown) {
+      bellBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdown.classList.contains('open')) {
+          this.closeNotificationDropdown();
+        } else {
+          this.openNotificationDropdown();
+        }
+      });
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', (e) => {
+      const wrapper = document.getElementById('notification-wrapper');
+      if (wrapper && !wrapper.contains(e.target)) {
+        this.closeNotificationDropdown();
+      }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeNotificationDropdown();
+      }
+    });
+
+    // Prevent clicks inside dropdown from closing it
+    if (dropdown) {
+      dropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
+
+    // Sound toggle
+    if (soundBtn) {
+      this.updateSoundIcon();
+      soundBtn.addEventListener('click', () => {
+        this.soundEnabled = !this.soundEnabled;
+        this.saveToStorage('machinasense_sound_enabled', this.soundEnabled);
+        this.updateSoundIcon();
+        if (this.soundEnabled) {
+          this.playAlertSound('Info');
+        }
+      });
+    }
+
+    // Mark All Read
+    if (markAllReadBtn) {
+      markAllReadBtn.addEventListener('click', () => {
+        this.activeAlerts.forEach((alt) => {
+          this.readAlertIds.add(this.getAlertKey(alt));
+        });
+        this.saveToStorage('machinasense_read_alerts', Array.from(this.readAlertIds));
+        this.updateNotificationUI();
+      });
+    }
+
+    // Clear Read
+    if (clearReadBtn) {
+      clearReadBtn.addEventListener('click', () => {
+        this.activeAlerts.forEach((alt) => {
+          const key = this.getAlertKey(alt);
+          if (this.readAlertIds.has(key)) {
+            this.dismissedAlertIds.add(key);
+          }
+        });
+        this.saveToStorage('machinasense_dismissed_alerts', Array.from(this.dismissedAlertIds));
+        this.updateNotificationUI();
+      });
+    }
+
+    // Tab buttons
+    tabButtons.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        tabButtons.forEach((t) => t.classList.remove('active'));
+        tab.classList.add('active');
+        this.notifFilter = tab.dataset.tab;
+        this.renderNotificationList();
+      });
+    });
+
+    // Inspect link in dropdown footer
+    if (inspectConditionLink) {
+      inspectConditionLink.addEventListener('click', () => {
+        this.closeNotificationDropdown();
+      });
+    }
+  }
+
+  updateSoundIcon() {
+    const onIcon = document.querySelector('.sound-icon-on');
+    const offIcon = document.querySelector('.sound-icon-off');
+    const soundBtn = document.getElementById('btn-sound-toggle');
+    if (onIcon && offIcon) {
+      if (this.soundEnabled) {
+        onIcon.style.display = 'inline-block';
+        offIcon.style.display = 'none';
+        if (soundBtn) soundBtn.title = 'Mute Alert Sound';
+      } else {
+        onIcon.style.display = 'none';
+        offIcon.style.display = 'inline-block';
+        if (soundBtn) soundBtn.title = 'Unmute Alert Sound';
+      }
+    }
+  }
+
+  openNotificationDropdown() {
+    const bellBtn = document.getElementById('btn-notifications');
+    const dropdown = document.getElementById('notification-dropdown');
+    if (!dropdown || !bellBtn) return;
+
+    dropdown.classList.add('open');
+    bellBtn.classList.add('active');
+    bellBtn.setAttribute('aria-expanded', 'true');
+    this.renderNotificationList();
+  }
+
+  closeNotificationDropdown() {
+    const bellBtn = document.getElementById('btn-notifications');
+    const dropdown = document.getElementById('notification-dropdown');
+    if (!dropdown || !bellBtn) return;
+
+    dropdown.classList.remove('open');
+    bellBtn.classList.remove('active');
+    bellBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  handleIncomingAlerts(serverAlerts) {
+    if (!serverAlerts || !Array.isArray(serverAlerts)) return;
+    this.activeAlerts = serverAlerts;
+
+    let hasNewAlert = false;
+    let newestAlert = null;
+
+    serverAlerts.forEach((alt) => {
+      const key = this.getAlertKey(alt);
+      if (!this.seenAlertSignatures.has(key)) {
+        this.seenAlertSignatures.add(key);
+        if (this.initialAlertsLoaded) {
+          hasNewAlert = true;
+          newestAlert = alt;
+        }
+      }
+    });
+
+    if (!this.initialAlertsLoaded) {
+      this.initialAlertsLoaded = true;
+    } else if (hasNewAlert && newestAlert) {
+      const bellBtn = document.getElementById('btn-notifications');
+      if (bellBtn) {
+        bellBtn.classList.remove('has-new-alert');
+        void bellBtn.offsetWidth;
+        bellBtn.classList.add('has-new-alert');
+      }
+      this.playAlertSound(newestAlert.severity);
+      this.showToast(newestAlert);
+    }
+
+    this.updateNotificationUI();
+  }
+
+  updateNotificationUI() {
+    const visibleAlerts = this.activeAlerts.filter(
+      (a) => !this.dismissedAlertIds.has(this.getAlertKey(a))
+    );
+
+    const totalCount = visibleAlerts.length;
+    const critCount = visibleAlerts.filter((a) => a.severity === 'Critical').length;
+    const warnCount = visibleAlerts.filter((a) => a.severity === 'Warning').length;
+    const unreadAlerts = visibleAlerts.filter(
+      (a) => !this.readAlertIds.has(this.getAlertKey(a))
+    );
+    const unreadCount = unreadAlerts.length;
+
+    // Update tab counts
+    const cntAll = document.getElementById('notif-cnt-all');
+    const cntCrit = document.getElementById('notif-cnt-critical');
+    const cntWarn = document.getElementById('notif-cnt-warning');
+    const cntUnread = document.getElementById('notif-cnt-unread');
+
+    if (cntAll) cntAll.textContent = totalCount;
+    if (cntCrit) cntCrit.textContent = critCount;
+    if (cntWarn) cntWarn.textContent = warnCount;
+    if (cntUnread) cntUnread.textContent = unreadCount;
+
+    // Update Bell Badge
+    const badge = document.getElementById('badge-alert-count');
+    if (badge) {
+      if (unreadCount === 0) {
+        badge.classList.add('hidden');
+        badge.textContent = '0';
+      } else {
+        badge.classList.remove('hidden');
+        badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+        const hasUnreadCrit = unreadAlerts.some((a) => a.severity === 'Critical');
+        if (hasUnreadCrit) {
+          badge.classList.add('pulse');
+        } else {
+          badge.classList.remove('pulse');
+        }
+      }
+    }
+
+    this.renderNotificationList();
+  }
+
+  renderNotificationList() {
+    const listEl = document.getElementById('notif-items-list');
+    if (!listEl) return;
+
+    let visibleAlerts = this.activeAlerts.filter(
+      (a) => !this.dismissedAlertIds.has(this.getAlertKey(a))
+    );
+
+    if (this.notifFilter === 'critical') {
+      visibleAlerts = visibleAlerts.filter((a) => a.severity === 'Critical');
+    } else if (this.notifFilter === 'warning') {
+      visibleAlerts = visibleAlerts.filter((a) => a.severity === 'Warning');
+    } else if (this.notifFilter === 'unread') {
+      visibleAlerts = visibleAlerts.filter(
+        (a) => !this.readAlertIds.has(this.getAlertKey(a))
+      );
+    }
+
+    if (visibleAlerts.length === 0) {
+      let emptyMsg = 'No active anomaly alerts matching your filter.';
+      if (this.notifFilter === 'unread') {
+        emptyMsg = 'All alerts have been acknowledged. Great job!';
+      } else if (this.notifFilter === 'critical') {
+        emptyMsg = 'No critical severity alerts reported across any asset.';
+      }
+      listEl.innerHTML = `
+        <div class="notif-empty-state">
+          <div class="notif-empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 11 14 15 10"></polyline></svg>
+          </div>
+          <div class="notif-empty-title">All Systems Nominal</div>
+          <div class="notif-empty-desc">${emptyMsg}</div>
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = visibleAlerts
+      .map((alt) => {
+        const key = this.getAlertKey(alt);
+        const isRead = this.readAlertIds.has(key);
+        const isCrit = alt.severity === 'Critical';
+        const isWarn = alt.severity === 'Warning';
+        const severityCls = isCrit ? 'critical' : (isWarn ? 'warning' : 'info');
+        const icon = isCrit ? '🛑' : (isWarn ? '⚠️' : 'ℹ️');
+
+        const isPayloadExpanded = this.expandedPayloads.has(key);
+        const jsonHtml = alt.payload ? formatJsonHtml(alt.payload) : '';
+
+        // Equipment icon
+        let equipIcon = '⚙️';
+        if (alt.asset.toLowerCase().includes('pump')) equipIcon = '💧';
+        else if (alt.asset.toLowerCase().includes('motor')) equipIcon = '⚡';
+        else if (alt.asset.toLowerCase().includes('gearbox')) equipIcon = '⚙️';
+        else if (alt.asset.toLowerCase().includes('compressor')) equipIcon = '📦';
+
+        return `
+          <div class="notif-item ${severityCls} ${isRead ? 'read' : 'unread'}" data-key="${key}">
+            <div class="notif-item-top">
+              <div class="notif-item-badges">
+                <span class="notif-severity-badge ${severityCls}">${icon} ${alt.severity}</span>
+                ${!isRead ? '<span class="notif-unread-dot" title="Unacknowledged"></span>' : ''}
+              </div>
+              <span class="notif-item-time">${alt.time || 'Just now'}</span>
+            </div>
+            <div class="notif-item-asset">${equipIcon} ${alt.asset}</div>
+            <div class="notif-item-issue">${alt.issue}</div>
+
+            <div class="notif-item-actions">
+              <button class="notif-action-primary btn-inspect-asset" data-key="${key}">
+                Inspect Telemetry
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+              <div class="notif-item-btn-group">
+                ${alt.payload ? `
+                  <button class="notif-btn-sub btn-toggle-payload" data-key="${key}" title="View JSON Payload">
+                    ${isPayloadExpanded ? 'Hide Details' : 'Details'}
+                  </button>
+                ` : ''}
+                <button class="notif-btn-sub btn-toggle-read" data-key="${key}" title="${isRead ? 'Mark as Unread' : 'Mark as Read'}">
+                  ${isRead ? 'Unread' : 'Mark Read'}
+                </button>
+                <button class="notif-btn-sub dismiss-btn btn-dismiss-alert" data-key="${key}" title="Dismiss from list">×</button>
+              </div>
+            </div>
+
+            ${isPayloadExpanded ? `<div class="notif-payload-drawer"><pre><code>${jsonHtml}</code></pre></div>` : ''}
+          </div>
+        `;
+      })
+      .join('');
+
+    // Bind event handlers on the rendered items
+    listEl.querySelectorAll('.btn-inspect-asset').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        const alt = visibleAlerts.find((a) => this.getAlertKey(a) === key);
+        this.navigateToTelemetry(alt);
+      });
+    });
+
+    listEl.querySelectorAll('.btn-toggle-payload').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        if (this.expandedPayloads.has(key)) {
+          this.expandedPayloads.delete(key);
+        } else {
+          this.expandedPayloads.add(key);
+        }
+        this.renderNotificationList();
+      });
+    });
+
+    listEl.querySelectorAll('.btn-toggle-read').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        if (this.readAlertIds.has(key)) {
+          this.readAlertIds.delete(key);
+        } else {
+          this.readAlertIds.add(key);
+        }
+        this.saveToStorage('machinasense_read_alerts', Array.from(this.readAlertIds));
+        this.updateNotificationUI();
+      });
+    });
+
+    listEl.querySelectorAll('.btn-dismiss-alert').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const key = btn.dataset.key;
+        this.dismissedAlertIds.add(key);
+        this.saveToStorage('machinasense_dismissed_alerts', Array.from(this.dismissedAlertIds));
+        this.updateNotificationUI();
+      });
+    });
   }
 }
 

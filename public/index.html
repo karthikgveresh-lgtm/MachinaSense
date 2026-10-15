@@ -99,9 +99,56 @@
         </div>
 
         <div class="user-controls">
-          <div class="notification-btn" id="btn-notifications">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-            <span class="notification-badge" id="badge-alert-count">3</span>
+          <div class="notification-wrapper" id="notification-wrapper">
+            <button class="notification-btn" id="btn-notifications" aria-label="Notifications" aria-expanded="false" aria-haspopup="true" title="Open Notifications & System Alerts">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span class="notification-badge hidden" id="badge-alert-count">0</span>
+            </button>
+
+            <!-- Floating Notification Dropdown Popover -->
+            <div class="notification-dropdown" id="notification-dropdown" role="region" aria-label="System Notifications">
+              <!-- Dropdown Header -->
+              <div class="notif-dropdown-header">
+                <div class="notif-header-top">
+                  <div class="notif-title-area">
+                    <div class="notif-header-title">System Alerts</div>
+                    <span class="notif-live-pill"><span class="notif-live-dot"></span> Live</span>
+                  </div>
+                  <div class="notif-header-actions">
+                    <button class="notif-icon-btn" id="btn-sound-toggle" title="Toggle Alert Sound" aria-label="Toggle Sound">
+                      <svg class="sound-icon-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                      <svg class="sound-icon-off" style="display: none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>
+                    </button>
+                    <button class="notif-text-btn" id="btn-mark-all-read" title="Mark all active alerts as read">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                      <span>Mark all read</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Tabs Filter Row -->
+                <div class="notif-filter-tabs">
+                  <button class="notif-tab active" data-tab="all">All <span class="notif-tab-count" id="notif-cnt-all">0</span></button>
+                  <button class="notif-tab" data-tab="critical">Critical <span class="notif-tab-count" id="notif-cnt-critical">0</span></button>
+                  <button class="notif-tab" data-tab="warning">Warning <span class="notif-tab-count" id="notif-cnt-warning">0</span></button>
+                  <button class="notif-tab" data-tab="unread">Unread <span class="notif-tab-count" id="notif-cnt-unread">0</span></button>
+                </div>
+              </div>
+
+              <!-- Notifications Body List -->
+              <div class="notif-items-list" id="notif-items-list">
+                <!-- Dynamically populated notification cards -->
+              </div>
+
+              <!-- Footer -->
+              <div class="notif-dropdown-footer">
+                <a href="#condition" class="notif-footer-link" id="btn-notif-inspect-condition">
+                  <span>Inspect Condition Monitor</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </a>
+                <button class="notif-footer-action-btn" id="btn-clear-read" title="Clear acknowledged alerts from this list">Clear Read</button>
+              </div>
+            </div>
           </div>
 
           <div class="user-profile">
@@ -311,7 +358,7 @@
                 </div>
               </div>
 
-              <!-- Bottom Grid: Asset Performance & Distribution/RUL -->
+              <!-- Bottom Grid: Asset Performance -->
               <div class="bottom-grid">
                 <!-- Asset Performance Table -->
                 <div class="panel-card asset-perf-card">
@@ -334,88 +381,86 @@
                     </table>
                   </div>
                 </div>
+              </div>
 
-                <!-- Asset Distribution & RUL Column -->
-                <div class="dist-rul-col">
-                  <!-- Asset Distribution Donut -->
-                  <div class="panel-card asset-dist-card">
-                    <div class="panel-title">Asset Distribution</div>
-                    <div class="donut-wrap">
-                      <div class="donut-chart-box">
-                        <svg class="donut-svg" viewBox="0 0 100 100">
-                          <circle class="donut-segment seg-healthy" cx="50" cy="50" r="40" stroke-dasharray="199 251" stroke-dashoffset="0"></circle>
-                          <circle class="donut-segment seg-risk" cx="50" cy="50" r="40" stroke-dasharray="36 251" stroke-dashoffset="-199"></circle>
-                          <circle class="donut-segment seg-critical" cx="50" cy="50" r="40" stroke-dasharray="16 251" stroke-dashoffset="-235"></circle>
-                        </svg>
-                        <div class="donut-center-text">
-                          <div class="donut-number" id="donut-total">48</div>
-                          <div class="donut-label">Total Assets</div>
-                        </div>
-                      </div>
+            </div>
 
-                      <div class="donut-legend">
-                        <div class="legend-row">
-                          <span class="legend-bullet bullet-healthy"></span>
-                          <span class="legend-name">Healthy</span>
-                          <strong class="legend-count" id="legend-h-count">38</strong>
-                          <span class="legend-pct" id="legend-h-pct">79.2%</span>
-                        </div>
-                        <div class="legend-row">
-                          <span class="legend-bullet bullet-risk"></span>
-                          <span class="legend-name">At Risk</span>
-                          <strong class="legend-count" id="legend-r-count">7</strong>
-                          <span class="legend-pct" id="legend-r-pct">14.6%</span>
-                        </div>
-                        <div class="legend-row">
-                          <span class="legend-bullet bullet-critical"></span>
-                          <span class="legend-name">Critical</span>
-                          <strong class="legend-count" id="legend-c-count">3</strong>
-                          <span class="legend-pct" id="legend-c-pct">6.2%</span>
-                        </div>
-                      </div>
+            <!-- Intelligence & Alerts Right Panel -->
+            <aside class="dashboard-right-col">
+              <!-- Asset Distribution Donut -->
+              <div class="panel-card asset-dist-card">
+                <div class="panel-title">Asset Distribution</div>
+                <div class="donut-wrap">
+                  <div class="donut-chart-box">
+                    <svg class="donut-svg" viewBox="0 0 100 100">
+                      <circle class="donut-segment seg-healthy" cx="50" cy="50" r="40" stroke-dasharray="199 251" stroke-dashoffset="0"></circle>
+                      <circle class="donut-segment seg-risk" cx="50" cy="50" r="40" stroke-dasharray="36 251" stroke-dashoffset="-199"></circle>
+                      <circle class="donut-segment seg-critical" cx="50" cy="50" r="40" stroke-dasharray="16 251" stroke-dashoffset="-235"></circle>
+                    </svg>
+                    <div class="donut-center-text">
+                      <div class="donut-number" id="donut-total">48</div>
+                      <div class="donut-label">Total Assets</div>
                     </div>
                   </div>
 
-                  <!-- Remaining Useful Life (RUL) -->
-                  <div class="panel-card rul-card">
-                    <div class="rul-header">
-                      <div class="panel-title">Remaining Useful Life (RUL)</div>
-                      <a href="#predictive" class="view-all-link">View Models →</a>
+                  <div class="donut-legend">
+                    <div class="legend-row">
+                      <span class="legend-bullet bullet-healthy"></span>
+                      <span class="legend-name">Healthy</span>
+                      <strong class="legend-count" id="legend-h-count">38</strong>
+                      <span class="legend-pct" id="legend-h-pct">79.2%</span>
                     </div>
-                    <div class="rul-body">
-                      <div class="rul-asset-row">
-                        <div class="rul-icon-gear">⚙️</div>
-                        <div class="rul-asset-info">
-                          <div class="rul-asset-name" id="rul-asset-name">Gearbox-02 (G-207)</div>
-                          <div class="rul-metric">
-                            <span class="rul-pct-big" id="rul-pct-val">62%</span>
-                            <small>RUL</small>
-                          </div>
-                        </div>
-                        <div class="rul-estimate-box">
-                          <div class="rul-sub-label">Estimated Remaining Life</div>
-                          <div class="rul-hours" id="rul-hours-val">2,487 hours</div>
-                          <div class="rul-change-up">↑ 12% vs. last 7 days</div>
-                        </div>
-                      </div>
-
-                      <div class="rul-bar-track">
-                        <div class="rul-bar-fill" id="rul-bar-fill" style="width: 62%;"></div>
-                      </div>
-
-                      <div class="rul-footer-stats">
-                        <div>Model Confidence: <strong id="rul-confidence">92%</strong></div>
-                        <div>Prediction Window: <strong id="rul-window">3-6 months</strong></div>
-                      </div>
+                    <div class="legend-row">
+                      <span class="legend-bullet bullet-risk"></span>
+                      <span class="legend-name">At Risk</span>
+                      <strong class="legend-count" id="legend-r-count">7</strong>
+                      <span class="legend-pct" id="legend-r-pct">14.6%</span>
+                    </div>
+                    <div class="legend-row">
+                      <span class="legend-bullet bullet-critical"></span>
+                      <span class="legend-name">Critical</span>
+                      <strong class="legend-count" id="legend-c-count">3</strong>
+                      <span class="legend-pct" id="legend-c-pct">6.2%</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-            </div>
+              <!-- Remaining Useful Life (RUL) -->
+              <div class="panel-card rul-card">
+                <div class="rul-header">
+                  <div class="panel-title">Remaining Useful Life (RUL)</div>
+                  <a href="#predictive" class="view-all-link">View Models →</a>
+                </div>
+                <div class="rul-body">
+                  <div class="rul-asset-row">
+                    <div class="rul-icon-gear">⚙️</div>
+                    <div class="rul-asset-info">
+                      <div class="rul-asset-name" id="rul-asset-name">Gearbox-02 (G-207)</div>
+                      <div class="rul-metric">
+                        <span class="rul-pct-big" id="rul-pct-val">62%</span>
+                        <small>RUL</small>
+                      </div>
+                    </div>
+                    <div class="rul-estimate-box">
+                      <div class="rul-sub-label">Estimated Remaining Life</div>
+                      <div class="rul-hours" id="rul-hours-val">2,487 hours</div>
+                      <div class="rul-change-up">↑ 12% vs. last 7 days</div>
+                    </div>
+                  </div>
 
-            <!-- Active Alerts Feed Right Panel -->
-            <aside class="dashboard-right-col">
+                  <div class="rul-bar-track">
+                    <div class="rul-bar-fill" id="rul-bar-fill" style="width: 62%;"></div>
+                  </div>
+
+                  <div class="rul-footer-stats">
+                    <div>Model Confidence: <strong id="rul-confidence">92%</strong></div>
+                    <div>Prediction Window: <strong id="rul-window">3-6 months</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active Alerts Feed -->
               <div class="panel-card alerts-feed-card">
                 <div class="alerts-feed-header">
                   <div class="panel-title">Active Alerts Feed</div>
@@ -1110,6 +1155,9 @@
       </div><!-- .content-body -->
     </main>
   </div>
+
+  <!-- Real-Time Floating Anomaly Toast Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>
