@@ -135,6 +135,156 @@ function drawWaveCanvas(canvasId, history, color, minVal, maxVal) {
   ctx.restore();
 }
 
+// ===========================================================================
+// Machine Category Schemas for Dynamic Registration & Engineering Specs
+// ===========================================================================
+const MACHINE_SCHEMAS = {
+  pump: {
+    label: 'Pump Telemetry Schema v2.4',
+    typeName: 'Centrifugal Slurry Pump',
+    defaultRpm: 1450,
+    idPrefix: 'P',
+    namePrefix: 'Slurry Feed Pump',
+    icon: '💧',
+    fields: [
+      { id: 'flow_rate', label: 'Flow Rate', type: 'number', placeholder: '240', defaultValue: '240', unit: 'm³/h' },
+      { id: 'discharge_press', label: 'Discharge Pressure', type: 'number', placeholder: '12.5', defaultValue: '12.5', unit: 'bar' },
+      { id: 'suction_press', label: 'Suction Pressure', type: 'number', placeholder: '2.1', defaultValue: '2.1', unit: 'bar' },
+      { id: 'impeller_dia', label: 'Impeller Diameter', type: 'number', placeholder: '315', defaultValue: '315', unit: 'mm' },
+      { id: 'fluid_type', label: 'Process Fluid Handled', type: 'select', options: ['Slurry / Mineral Tailings', 'Feedwater Condensate', 'Chemical Solvent', 'Cooling Water', 'Crude Hydrocarbon'] },
+      { id: 'seal_flush_press', label: 'Seal Flush Pressure', type: 'number', placeholder: '4.2', defaultValue: '4.2', unit: 'bar' },
+    ]
+  },
+  motor: {
+    label: 'Electric Motor Schema v3.1',
+    typeName: 'Induction Motor 450kW',
+    defaultRpm: 2980,
+    idPrefix: 'M',
+    namePrefix: 'Induction Motor',
+    icon: '⚡',
+    fields: [
+      { id: 'rated_power', label: 'Rated Power', type: 'number', placeholder: '450', defaultValue: '450', unit: 'kW' },
+      { id: 'voltage', label: 'Operating Voltage', type: 'select', options: ['400V (3-Phase)', '690V', '3.3kV (Medium Voltage)', '6.6kV', '11kV'] },
+      { id: 'full_load_amps', label: 'Full Load Current', type: 'number', placeholder: '78.5', defaultValue: '78.5', unit: 'A' },
+      { id: 'pole_count', label: 'Poles / Synchronous Speed', type: 'select', options: ['2-Pole (3000 RPM)', '4-Pole (1500 RPM)', '6-Pole (1000 RPM)', '8-Pole (750 RPM)'] },
+      { id: 'insulation_class', label: 'Winding Insulation Class', type: 'select', options: ['Class F (155°C)', 'Class H (180°C)', 'Class B (130°C)'] },
+      { id: 'de_bearing', label: 'Drive End Bearing Spec', type: 'select', options: ['Deep Groove Ball 6318', 'Cylindrical Roller NU 318', 'Angular Contact 7318'] },
+    ]
+  },
+  gearbox: {
+    label: 'Speed Reducer Schema v2.8',
+    typeName: 'Helical Speed Reducer',
+    defaultRpm: 850,
+    idPrefix: 'G',
+    namePrefix: 'Helical Gearbox',
+    icon: '⚙️',
+    fields: [
+      { id: 'gear_ratio', label: 'Gear Reduction Ratio', type: 'text', placeholder: '4.85:1', defaultValue: '4.85:1' },
+      { id: 'oil_viscosity', label: 'Lube Oil Viscosity Grade', type: 'select', options: ['ISO VG 220', 'ISO VG 320', 'ISO VG 460', 'Synthetic Polyalphaolefin (PAO)'] },
+      { id: 'sump_temp_limit', label: 'Max Sump Temp Limit', type: 'number', placeholder: '85', defaultValue: '85', unit: '°C' },
+      { id: 'stages', label: 'Reduction Configuration', type: 'select', options: ['Double Stage Helical', 'Single Stage Spur', 'Triple Planetary', 'Bevel-Helical'] },
+      { id: 'mesh_freq', label: 'Gear Mesh Frequency', type: 'number', placeholder: '412', defaultValue: '412', unit: 'Hz' },
+      { id: 'lube_delivery', label: 'Lubrication Method', type: 'select', options: ['Forced Pressure Lube', 'Splash Sump Bath', 'Oil Mist System'] },
+    ]
+  },
+  compressor: {
+    label: 'Rotary Compressor Schema v1.9',
+    typeName: 'Rotary Screw Compressor',
+    defaultRpm: 3600,
+    idPrefix: 'C',
+    namePrefix: 'Rotary Compressor',
+    icon: '📦',
+    fields: [
+      { id: 'fad_capacity', label: 'Free Air Delivery', type: 'number', placeholder: '28.5', defaultValue: '28.5', unit: 'm³/min' },
+      { id: 'max_press', label: 'Discharge Pressure', type: 'number', placeholder: '8.5', defaultValue: '8.5', unit: 'bar' },
+      { id: 'intercooler_temp', label: 'Intercooler Temp', type: 'number', placeholder: '42', defaultValue: '42', unit: '°C' },
+      { id: 'compression_type', label: 'Compression Technology', type: 'select', options: ['Oil-Injected Twin Screw', 'Oil-Free Scroll', 'Multi-Stage Centrifugal Turbo', 'Reciprocating Piston'] },
+      { id: 'dew_point', label: 'Pressure Dew Point', type: 'number', placeholder: '3', defaultValue: '3', unit: '°C' },
+      { id: 'separator_dp', label: 'Separator Diff Pressure', type: 'number', placeholder: '220', defaultValue: '220', unit: 'mbar' },
+    ]
+  },
+  turbine: {
+    label: 'Turbomachinery Schema v4.0',
+    typeName: 'Gas Expansion Turbine',
+    defaultRpm: 5400,
+    idPrefix: 'T',
+    namePrefix: 'Expansion Turbine',
+    icon: '🌪️',
+    fields: [
+      { id: 'inlet_temp', label: 'Inlet Gas / Steam Temp', type: 'number', placeholder: '540', defaultValue: '540', unit: '°C' },
+      { id: 'inlet_press', label: 'Inlet Pressure', type: 'number', placeholder: '45', defaultValue: '45', unit: 'bar' },
+      { id: 'exhaust_press', label: 'Exhaust Backpressure', type: 'number', placeholder: '0.08', defaultValue: '0.08', unit: 'bar' },
+      { id: 'blade_vib_pk', label: 'Blade Vibration pk-pk Limit', type: 'number', placeholder: '25', defaultValue: '25', unit: 'μm' },
+      { id: 'turbine_type', label: 'Working Fluid / Cycle', type: 'select', options: ['Combustion Fuel Gas', 'Superheated Steam', 'Organic Rankine (ORC)', 'Supercritical CO2'] },
+      { id: 'governor_pos', label: 'Governing Valve Position', type: 'number', placeholder: '82', defaultValue: '82', unit: '%' },
+    ]
+  },
+  fan: {
+    label: 'Industrial Aerofoil Fan Schema v2.1',
+    typeName: 'Cooling Tower Draft Fan',
+    defaultRpm: 1180,
+    idPrefix: 'F',
+    namePrefix: 'Draft Fan',
+    icon: '🌀',
+    fields: [
+      { id: 'airflow_vol', label: 'Design Airflow', type: 'number', placeholder: '65000', defaultValue: '65000', unit: 'm³/h' },
+      { id: 'static_press', label: 'Static Pressure Head', type: 'number', placeholder: '450', defaultValue: '450', unit: 'Pa' },
+      { id: 'pitch_angle', label: 'Blade Pitch Angle', type: 'number', placeholder: '16.5', defaultValue: '16.5', unit: '°' },
+      { id: 'fan_type', label: 'Impeller Configuration', type: 'select', options: ['Induced Draft Axial', 'Forced Draft Backward-Curved', 'Heavy Centrifugal Blower'] },
+      { id: 'drive_type', label: 'Drivetrain Coupling', type: 'select', options: ['Direct Drive Flange', 'V-Belt Quad Sheave', 'Right-Angle Gearbox'] },
+      { id: 'duct_velocity', label: 'Duct Discharge Velocity', type: 'number', placeholder: '14.2', defaultValue: '14.2', unit: 'm/s' },
+    ]
+  },
+  hydraulic: {
+    label: 'Hydraulic Power Unit Schema v1.8',
+    typeName: 'High-Pressure Hydraulic Pack',
+    defaultRpm: 1750,
+    idPrefix: 'H',
+    namePrefix: 'Hydraulic Pack',
+    icon: '🔧',
+    fields: [
+      { id: 'system_press', label: 'Nominal Operating Pressure', type: 'number', placeholder: '210', defaultValue: '210', unit: 'bar' },
+      { id: 'tank_capacity', label: 'Reservoir Fluid Volume', type: 'number', placeholder: '400', defaultValue: '400', unit: 'L' },
+      { id: 'delivery_flow', label: 'Pump Flow Rate', type: 'number', placeholder: '120', defaultValue: '120', unit: 'L/min' },
+      { id: 'fluid_grade', label: 'Hydraulic Fluid Spec', type: 'select', options: ['ISO VG 46 Mineral Oil', 'ISO VG 68 Heavy Duty', 'Fire-Resistant Water-Glycol (HFC)', 'Synthetic Ester (HEES)'] },
+      { id: 'filter_dp', label: 'Filter Differential Limit', type: 'number', placeholder: '1.2', defaultValue: '1.2', unit: 'bar' },
+      { id: 'cooler_capacity', label: 'Heat Exchanger Capacity', type: 'number', placeholder: '18', defaultValue: '18', unit: 'kW' },
+    ]
+  },
+  conveyor: {
+    label: 'Bulk Handling Conveyor Schema v2.3',
+    typeName: 'Overland Belt Conveyor Drive',
+    defaultRpm: 980,
+    idPrefix: 'CV',
+    namePrefix: 'Overland Conveyor',
+    icon: '🔄',
+    fields: [
+      { id: 'belt_speed', label: 'Belt Speed', type: 'number', placeholder: '2.5', defaultValue: '2.5', unit: 'm/s' },
+      { id: 'belt_width', label: 'Belt Width', type: 'number', placeholder: '1200', defaultValue: '1200', unit: 'mm' },
+      { id: 'tonnage_rate', label: 'Material Throughput', type: 'number', placeholder: '850', defaultValue: '850', unit: 't/h' },
+      { id: 'trough_angle', label: 'Troughing Idler Angle', type: 'select', options: ['35° Three-Roll Idler', '45° Deep Trough', '20° Standard Idler'] },
+      { id: 'pulley_dia', label: 'Drive Pulley Diameter', type: 'number', placeholder: '630', defaultValue: '630', unit: 'mm' },
+      { id: 'takeup_type', label: 'Tensioning Mechanism', type: 'select', options: ['Gravity Counterweight Tower', 'Hydraulic Dynamic Tensioner', 'Screw Take-Up Carriage'] },
+    ]
+  },
+  cnc: {
+    label: 'CNC Machining Center Schema v3.5',
+    typeName: '5-Axis Machining Center',
+    defaultRpm: 12000,
+    idPrefix: 'CNC',
+    namePrefix: 'Precision CNC Mill',
+    icon: '🎛️',
+    fields: [
+      { id: 'spindle_max_rpm', label: 'Max Spindle Speed', type: 'number', placeholder: '18000', defaultValue: '18000', unit: 'RPM' },
+      { id: 'axis_config', label: 'Axis Kinematics', type: 'select', options: ['5-Axis Simultaneous Trunnion', '3-Axis Vertical Machining (VMC)', '4-Axis Horizontal Dual Pallet (HMC)'] },
+      { id: 'tool_capacity', label: 'Tool Magazine Stations', type: 'number', placeholder: '48', defaultValue: '48' },
+      { id: 'rapid_feed', label: 'Rapid Traverse Feed', type: 'number', placeholder: '45', defaultValue: '45', unit: 'm/min' },
+      { id: 'coolant_press', label: 'Through-Spindle Coolant', type: 'number', placeholder: '70', defaultValue: '70', unit: 'bar' },
+      { id: 'accuracy_um', label: 'Positioning Repeatability', type: 'number', placeholder: '2.5', defaultValue: '2.5', unit: 'μm' },
+    ]
+  }
+};
+
 class DashboardApp {
   constructor() {
     this.pollInterval = 1000;
@@ -145,6 +295,12 @@ class DashboardApp {
     this.searchQuery = '';
     this.oscPhase = 0;
     this.activeMode = 'normal';
+
+    // Registered Custom Assets State
+    const storedAssets = this.loadFromStorage('machinasense_registered_assets', []);
+    this.customAssets = storedAssets.filter((a) => a && a.id && !a.name?.includes('prototype') && !a.id?.includes('prototype'));
+    this.saveToStorage('machinasense_registered_assets', this.customAssets);
+    this.selectedMachineType = 'pump';
 
     // Notification Center State
     this.notifFilter = 'all'; // 'all', 'critical', 'warning', 'unread'
@@ -162,6 +318,7 @@ class DashboardApp {
     this.setupRouting();
     this.setupChaosButtons();
     this.setupAssetFilters();
+    this.setupAssetRegistrationModal();
     this.setupConditionMonitoring();
     this.setupSettingsView();
     this.setupMaintenanceView();
@@ -393,6 +550,276 @@ class DashboardApp {
         this.searchQuery = e.target.value.toLowerCase().trim();
         if (this.latestData) this.renderFleetGrid(this.latestData.assets);
       });
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Machine Registration Modal & Dynamic Schema Generation
+  // -------------------------------------------------------------------------
+  setupAssetRegistrationModal() {
+    const modal = document.getElementById('modal-register-asset');
+    const openBtn = document.getElementById('btn-add-asset');
+    const closeBtn = document.getElementById('btn-close-modal');
+    const cancelBtn = document.getElementById('btn-cancel-modal');
+    const form = document.getElementById('form-register-asset');
+    const typeButtons = document.querySelectorAll('#machine-type-selector .type-btn');
+
+    if (!modal) return;
+
+    const openModal = () => {
+      modal.style.display = 'flex';
+      setTimeout(() => modal.classList.add('open'), 10);
+      this.selectMachineCategory(this.selectedMachineType || 'pump');
+      const nameInput = document.getElementById('reg-asset-name');
+      if (nameInput) nameInput.focus();
+    };
+
+    const closeModal = () => {
+      modal.classList.remove('open');
+      setTimeout(() => { modal.style.display = 'none'; }, 250);
+    };
+
+    if (openBtn) openBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        closeModal();
+      }
+    });
+
+    // Category button click handlers
+    typeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        typeButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        const type = btn.dataset.type;
+        this.selectedMachineType = type;
+        this.selectMachineCategory(type);
+      });
+    });
+
+    // Form submission
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await this.handleAssetRegistrationSubmit(form, closeModal);
+      });
+    }
+  }
+
+  selectMachineCategory(type) {
+    const schema = MACHINE_SCHEMAS[type] || MACHINE_SCHEMAS.pump;
+    const titleEl = document.getElementById('dynamic-section-title');
+    const badgeEl = document.getElementById('dynamic-schema-badge');
+    const rpmInput = document.getElementById('reg-asset-rpm');
+    const idInput = document.getElementById('reg-asset-id');
+    const nameInput = document.getElementById('reg-asset-name');
+
+    if (titleEl) titleEl.textContent = `3. ${schema.typeName} Specific Engineering & Sensor Parameters`;
+    if (badgeEl) badgeEl.textContent = schema.label;
+    if (rpmInput) rpmInput.value = schema.defaultRpm;
+
+    // Suggest a unique ID that does not collide
+    const existingIds = new Set([
+      ...this.customAssets.map((a) => a.id),
+      ...(this.latestData?.assets || []).map((a) => a.id),
+    ]);
+    let nextNum = 101;
+    let candidateId = `${schema.idPrefix}-${nextNum}`;
+    while (existingIds.has(candidateId)) {
+      nextNum++;
+      candidateId = `${schema.idPrefix}-${nextNum}`;
+    }
+    if (idInput && (!idInput.value || idInput.dataset.autoGenerated === 'true')) {
+      idInput.value = candidateId;
+      idInput.dataset.autoGenerated = 'true';
+    }
+
+    if (nameInput && (!nameInput.value || nameInput.dataset.autoGenerated === 'true')) {
+      nameInput.value = `${schema.namePrefix}-${String(nextNum).slice(-2)} (${candidateId})`;
+      nameInput.dataset.autoGenerated = 'true';
+    }
+
+    if (idInput) {
+      idInput.addEventListener('input', () => { idInput.dataset.autoGenerated = 'false'; }, { once: true });
+    }
+    if (nameInput) {
+      nameInput.addEventListener('input', () => { nameInput.dataset.autoGenerated = 'false'; }, { once: true });
+    }
+
+    // Render dynamic fields
+    this.renderDynamicFields(schema);
+  }
+
+  renderDynamicFields(schema) {
+    const container = document.getElementById('dynamic-fields-container');
+    if (!container) return;
+
+    container.innerHTML = schema.fields
+      .map((f) => {
+        if (f.type === 'select') {
+          const opts = f.options
+            .map((opt) => `<option value="${opt}">${opt}</option>`)
+            .join('');
+          return `
+            <div class="form-field">
+              <label for="dyn-${f.id}">${f.label}</label>
+              <select id="dyn-${f.id}" name="${f.id}" class="form-select">
+                ${opts}
+              </select>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="form-field">
+            <label for="dyn-${f.id}">
+              ${f.label} ${f.unit ? `<span style="color: var(--text-dim); font-size: 0.72rem;">(${f.unit})</span>` : ''}
+            </label>
+            <input
+              type="${f.type || 'text'}"
+              id="dyn-${f.id}"
+              name="${f.id}"
+              class="form-input"
+              placeholder="${f.placeholder || ''}"
+              value="${f.defaultValue || ''}"
+              step="any"
+              required
+            />
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  async handleAssetRegistrationSubmit(form, closeModal) {
+    const submitBtn = document.getElementById('btn-submit-asset');
+    const originalText = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>Connecting Telemetry...</span>`;
+    }
+
+    try {
+      const type = this.selectedMachineType || 'pump';
+      const schema = MACHINE_SCHEMAS[type] || MACHINE_SCHEMAS.pump;
+      const id = document.getElementById('reg-asset-id').value.trim();
+      const name = document.getElementById('reg-asset-name').value.trim();
+      const location = document.getElementById('reg-asset-location').value;
+      const rpm = parseInt(document.getElementById('reg-asset-rpm').value, 10) || schema.defaultRpm;
+      const tier = document.getElementById('reg-asset-tier').value;
+      const status = document.getElementById('reg-asset-status').value;
+
+      // Extract dynamic field parameters
+      const customParams = {};
+      schema.fields.forEach((f) => {
+        const el = document.getElementById(`dyn-${f.id}`);
+        if (el) {
+          customParams[f.id] = el.value;
+        }
+      });
+
+      // Compute initial operational telemetry baseline
+      let health = 94;
+      let vib = 1.45;
+      let temp = 55.4;
+      let current = 12.5;
+      let acoustic = 62.0;
+
+      if (status === 'At Risk') {
+        health = 68;
+        vib = 4.95;
+        temp = 73.2;
+        current = 21.0;
+        acoustic = 76.8;
+      } else if (status === 'Critical') {
+        health = 45;
+        vib = 7.35;
+        temp = 91.5;
+        current = 34.0;
+        acoustic = 85.2;
+      }
+
+      const newAsset = {
+        id,
+        name,
+        type,
+        typeName: schema.typeName,
+        location,
+        rpm,
+        installed: new Date().toISOString().split('T')[0],
+        health,
+        vib,
+        temp,
+        current,
+        acoustic,
+        status,
+        tier,
+        customParams,
+        isNew: true,
+      };
+
+      // 1. Add to local state and localStorage
+      this.customAssets = [newAsset, ...this.customAssets.filter((a) => a.id !== id)];
+      this.saveToStorage('machinasense_registered_assets', this.customAssets);
+
+      // 2. Transmit to backend
+      try {
+        await fetch('/api/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newAsset),
+        });
+      } catch (err) {
+        console.warn('Backend asset sync notice (offline mode active):', err);
+      }
+
+      // 3. Update active data in memory and re-render
+      if (this.latestData) {
+        this.render(this.latestData);
+      }
+
+      // 4. Quiet notification in dropdown (no audio sound!)
+      if (this.activeAlerts) {
+        const regAlert = {
+          id: `reg-${Date.now()}`,
+          severity: 'Info',
+          time: 'Just now',
+          asset: name,
+          issue: `Equipment onboarded: ${schema.typeName} at ${location}`,
+          read: false,
+          payload: {
+            asset_id: id,
+            event: 'commissioning_registered',
+            tier,
+            initial_status: status,
+            rpm,
+            telemetry_parameters: customParams,
+          },
+        };
+        this.activeAlerts.unshift(regAlert);
+        this.updateNotificationUI();
+      }
+
+      closeModal();
+
+      // Switch to fleet directory view so user immediately sees their new machine
+      window.location.hash = '#assets';
+
+    } catch (e) {
+      console.error('Registration failed:', e);
+      alert('Error registering machine: ' + e.message);
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
     }
   }
 
@@ -691,10 +1118,30 @@ class DashboardApp {
   }
 
   // -------------------------------------------------------------------------
-  // Master Render Loop
-  // -------------------------------------------------------------------------
   render(data) {
     if (!data) return;
+
+    // Merge custom registered assets with incoming data assets
+    const seenIds = new Set();
+    const mergedAssets = [];
+    for (const a of [...this.customAssets, ...(data.assets || [])]) {
+      if (!seenIds.has(a.id)) {
+        seenIds.add(a.id);
+        mergedAssets.push(a);
+      }
+    }
+    data.assets = mergedAssets;
+
+    // Recalculate summary counts based on custom assets
+    if (this.customAssets.length > 0) {
+      const extraHealthy = this.customAssets.filter((a) => a.status === 'Healthy').length;
+      const extraRisk = this.customAssets.filter((a) => a.status === 'At Risk' || a.status === 'Warning').length;
+      const extraCritical = this.customAssets.filter((a) => a.status === 'Critical').length;
+      data.summary.total = Math.max(data.summary.total, 48 + this.customAssets.length);
+      data.summary.healthy = (data.summary.healthy || 38) + extraHealthy;
+      data.summary.at_risk = (data.summary.at_risk || 7) + extraRisk;
+      data.summary.critical = (data.summary.critical || 3) + extraCritical;
+    }
 
     // 1. KPI Cards
     const sum = data.summary;
@@ -855,6 +1302,7 @@ class DashboardApp {
           fan: '🌀',
           hydraulic: '🔧',
           conveyor: '🔄',
+          cnc: '🎛️',
         };
         const icon = iconMap[a.type] || '⚙️';
 
@@ -875,8 +1323,12 @@ class DashboardApp {
             </div>
           </td>
           <td><strong>${a.health}</strong></td>
-          <td>${sparkHtml}</td>
-          <td><strong>${a.vib}</strong></td>
+          <td>
+            <div class="vib-spark-cell">
+              ${sparkHtml}
+              <span class="vib-spark-val">${a.vib}</span>
+            </div>
+          </td>
           <td>${a.temp}°C</td>
           <td><span class="badge-status ${badgeCls}">● ${a.status}</span></td>
         </tr>`;
@@ -934,10 +1386,13 @@ class DashboardApp {
           fan: '🌀',
           hydraulic: '🔧',
           conveyor: '🔄',
+          cnc: '🎛️',
         };
         const icon = iconMap[a.type] || '⚙️';
+        const isNewBadge = a.isNew ? '<span class="badge-new-asset">NEW</span>' : '';
 
-        return `<div class="fleet-card">
+        return `<div class="fleet-card" style="position: relative;">
+          ${isNewBadge}
           <div class="fleet-card-header">
             <div class="fleet-card-icon">${icon}</div>
             <div class="fleet-card-info">

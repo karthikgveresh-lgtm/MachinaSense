@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3.1.0">
 </head>
 <body>
   <!-- Interactive Chaos Control Banner -->
@@ -317,6 +317,7 @@
                   </div>
 
                   <!-- Vibration Trend -->
+                  <!-- Vibration Trend -->
                   <div class="trend-section">
                     <div class="trend-meta">
                       <div class="trend-label">
@@ -327,8 +328,15 @@
                         <span class="pulse-dot"></span> Current <strong id="trend-vib-curr">2.48</strong>
                       </div>
                     </div>
-                    <div class="chart-canvas-container">
-                      <canvas id="canvas-vibration" width="600" height="90"></canvas>
+                    <div class="chart-with-y-axis">
+                      <div class="y-axis-labels">
+                        <span>6.0</span>
+                        <span>3.0</span>
+                        <span>0.0</span>
+                      </div>
+                      <div class="chart-canvas-container">
+                        <canvas id="canvas-vibration" width="600" height="75"></canvas>
+                      </div>
                     </div>
                   </div>
 
@@ -343,8 +351,24 @@
                         <span class="pulse-dot-amber"></span> Current <strong id="trend-temp-curr">68.4</strong>
                       </div>
                     </div>
-                    <div class="chart-canvas-container">
-                      <canvas id="canvas-temperature" width="600" height="90"></canvas>
+                    <div class="chart-with-y-axis">
+                      <div class="y-axis-labels">
+                        <span>100</span>
+                        <span>70</span>
+                        <span>40</span>
+                      </div>
+                      <div class="chart-canvas-container">
+                        <canvas id="canvas-temperature" width="600" height="75"></canvas>
+                      </div>
+                    </div>
+                    <div class="x-axis-timestamps">
+                      <span>08:00</span>
+                      <span>09:00</span>
+                      <span>10:00</span>
+                      <span>11:00</span>
+                      <span>12:00</span>
+                      <span>13:00</span>
+                      <span>14:00</span>
                     </div>
                   </div>
 
@@ -358,7 +382,7 @@
                 </div>
               </div>
 
-              <!-- Bottom Grid: Asset Performance -->
+              <!-- Bottom Grid: Asset Performance & Distribution + RUL (Matching Image 2) -->
               <div class="bottom-grid">
                 <!-- Asset Performance Table -->
                 <div class="panel-card asset-perf-card">
@@ -369,7 +393,6 @@
                         <tr>
                           <th>Asset</th>
                           <th>Health Index</th>
-                          <th>Trend</th>
                           <th>Vibration (mm/s)</th>
                           <th>Temp (°C)</th>
                           <th>Status</th>
@@ -381,90 +404,92 @@
                     </table>
                   </div>
                 </div>
-              </div>
 
-            </div>
+                <!-- Asset Distribution Donut & Remaining Useful Life (RUL) Stack -->
+                <div class="dist-rul-col">
+                  <!-- Asset Distribution Donut -->
+                  <div class="panel-card asset-dist-card">
+                    <div class="panel-title">Asset Distribution</div>
+                    <div class="donut-wrap">
+                      <div class="donut-chart-box">
+                        <svg class="donut-svg" viewBox="0 0 100 100">
+                          <circle class="donut-segment seg-healthy" cx="50" cy="50" r="40" stroke-dasharray="199 251" stroke-dashoffset="0"></circle>
+                          <circle class="donut-segment seg-risk" cx="50" cy="50" r="40" stroke-dasharray="36 251" stroke-dashoffset="-199"></circle>
+                          <circle class="donut-segment seg-critical" cx="50" cy="50" r="40" stroke-dasharray="16 251" stroke-dashoffset="-235"></circle>
+                        </svg>
+                        <div class="donut-center-text">
+                          <div class="donut-number" id="donut-total">48</div>
+                          <div class="donut-label">Total Assets</div>
+                        </div>
+                      </div>
 
-            <!-- Intelligence & Alerts Right Panel -->
-            <aside class="dashboard-right-col">
-              <!-- Asset Distribution Donut -->
-              <div class="panel-card asset-dist-card">
-                <div class="panel-title">Asset Distribution</div>
-                <div class="donut-wrap">
-                  <div class="donut-chart-box">
-                    <svg class="donut-svg" viewBox="0 0 100 100">
-                      <circle class="donut-segment seg-healthy" cx="50" cy="50" r="40" stroke-dasharray="199 251" stroke-dashoffset="0"></circle>
-                      <circle class="donut-segment seg-risk" cx="50" cy="50" r="40" stroke-dasharray="36 251" stroke-dashoffset="-199"></circle>
-                      <circle class="donut-segment seg-critical" cx="50" cy="50" r="40" stroke-dasharray="16 251" stroke-dashoffset="-235"></circle>
-                    </svg>
-                    <div class="donut-center-text">
-                      <div class="donut-number" id="donut-total">48</div>
-                      <div class="donut-label">Total Assets</div>
-                    </div>
-                  </div>
-
-                  <div class="donut-legend">
-                    <div class="legend-row">
-                      <span class="legend-bullet bullet-healthy"></span>
-                      <span class="legend-name">Healthy</span>
-                      <strong class="legend-count" id="legend-h-count">38</strong>
-                      <span class="legend-pct" id="legend-h-pct">79.2%</span>
-                    </div>
-                    <div class="legend-row">
-                      <span class="legend-bullet bullet-risk"></span>
-                      <span class="legend-name">At Risk</span>
-                      <strong class="legend-count" id="legend-r-count">7</strong>
-                      <span class="legend-pct" id="legend-r-pct">14.6%</span>
-                    </div>
-                    <div class="legend-row">
-                      <span class="legend-bullet bullet-critical"></span>
-                      <span class="legend-name">Critical</span>
-                      <strong class="legend-count" id="legend-c-count">3</strong>
-                      <span class="legend-pct" id="legend-c-pct">6.2%</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Remaining Useful Life (RUL) -->
-              <div class="panel-card rul-card">
-                <div class="rul-header">
-                  <div class="panel-title">Remaining Useful Life (RUL)</div>
-                  <a href="#predictive" class="view-all-link">View Models →</a>
-                </div>
-                <div class="rul-body">
-                  <div class="rul-asset-row">
-                    <div class="rul-icon-gear">⚙️</div>
-                    <div class="rul-asset-info">
-                      <div class="rul-asset-name" id="rul-asset-name">Gearbox-02 (G-207)</div>
-                      <div class="rul-metric">
-                        <span class="rul-pct-big" id="rul-pct-val">62%</span>
-                        <small>RUL</small>
+                      <div class="donut-legend">
+                        <div class="legend-row">
+                          <span class="legend-bullet bullet-healthy"></span>
+                          <span class="legend-name">Healthy</span>
+                          <strong class="legend-count" id="legend-h-count">38</strong>
+                          <span class="legend-pct" id="legend-h-pct">79.2%</span>
+                        </div>
+                        <div class="legend-row">
+                          <span class="legend-bullet bullet-risk"></span>
+                          <span class="legend-name">At Risk</span>
+                          <strong class="legend-count" id="legend-r-count">7</strong>
+                          <span class="legend-pct" id="legend-r-pct">14.6%</span>
+                        </div>
+                        <div class="legend-row">
+                          <span class="legend-bullet bullet-critical"></span>
+                          <span class="legend-name">Critical</span>
+                          <strong class="legend-count" id="legend-c-count">3</strong>
+                          <span class="legend-pct" id="legend-c-pct">6.2%</span>
+                        </div>
                       </div>
                     </div>
-                    <div class="rul-estimate-box">
-                      <div class="rul-sub-label">Estimated Remaining Life</div>
-                      <div class="rul-hours" id="rul-hours-val">2,487 hours</div>
-                      <div class="rul-change-up">↑ 12% vs. last 7 days</div>
+                  </div>
+
+                  <!-- Remaining Useful Life (RUL) -->
+                  <div class="panel-card rul-card">
+                    <div class="rul-header">
+                      <div class="panel-title">Remaining Useful Life (RUL)</div>
+                      <a href="#predictive" class="view-all-link">View All →</a>
+                    </div>
+                    <div class="rul-body">
+                      <div class="rul-asset-row">
+                        <div class="rul-icon-gear">⚙️</div>
+                        <div class="rul-asset-info">
+                          <div class="rul-asset-name" id="rul-asset-name">Gearbox-02 (G-207)</div>
+                          <div class="rul-metric">
+                            <span class="rul-pct-big" id="rul-pct-val">62%</span>
+                            <small>RUL</small>
+                          </div>
+                        </div>
+                        <div class="rul-estimate-box">
+                          <div class="rul-sub-label">Estimated Remaining Life</div>
+                          <div class="rul-hours" id="rul-hours-val">2,487 hours</div>
+                          <div class="rul-change-up">↑ 12% vs. last 7 days</div>
+                        </div>
+                      </div>
+
+                      <div class="rul-bar-track">
+                        <div class="rul-bar-fill" id="rul-bar-fill" style="width: 62%;"></div>
+                      </div>
+
+                      <div class="rul-footer-stats">
+                        <div>Model Confidence: <strong id="rul-confidence">92%</strong></div>
+                        <div>Prediction Window: <strong id="rul-window">3-6 months</strong></div>
+                      </div>
                     </div>
                   </div>
+                </div><!-- .dist-rul-col -->
+              </div><!-- .bottom-grid -->
 
-                  <div class="rul-bar-track">
-                    <div class="rul-bar-fill" id="rul-bar-fill" style="width: 62%;"></div>
-                  </div>
+            </div><!-- .dashboard-left-col -->
 
-                  <div class="rul-footer-stats">
-                    <div>Model Confidence: <strong id="rul-confidence">92%</strong></div>
-                    <div>Prediction Window: <strong id="rul-window">3-6 months</strong></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Active Alerts Feed -->
+            <!-- Intelligence & Alerts Right Panel: Active Alerts Feed (Spans Full Height) -->
+            <aside class="dashboard-right-col">
               <div class="panel-card alerts-feed-card">
                 <div class="alerts-feed-header">
                   <div class="panel-title">Active Alerts Feed</div>
-                  <a href="#condition" class="view-all-link">Inspect All →</a>
+                  <a href="#condition" class="view-all-link">View All →</a>
                 </div>
                 <div class="alerts-list" id="alerts-container">
                   <!-- Dynamically populated alert cards -->
@@ -1159,6 +1184,153 @@
   <!-- Real-Time Floating Anomaly Toast Container -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-  <script src="app.js"></script>
+  <!-- ================================================================= -->
+  <!-- MODAL: DYNAMIC MACHINE REGISTRATION                              -->
+  <!-- ================================================================= -->
+  <div class="modal-backdrop" id="modal-register-asset" role="dialog" aria-modal="true" aria-labelledby="modal-reg-title" style="display: none;">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-header-icon">⚙️</div>
+        <div class="modal-header-text">
+          <h2 class="modal-title" id="modal-reg-title">Register Industrial Asset</h2>
+          <p class="modal-subtitle">Configure equipment telemetry, physical ratings, and operational baseline.</p>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-modal" aria-label="Close modal">✕</button>
+      </div>
+
+      <form id="form-register-asset" class="modal-form" onsubmit="return false;">
+        <!-- Machine Type Selection Grid -->
+        <div class="form-section">
+          <label class="form-section-title">1. Select Machine Category (Dynamic Telemetry Schema)</label>
+          <div class="machine-type-grid" id="machine-type-selector">
+            <button type="button" class="type-btn active" data-type="pump">
+              <span class="type-icon">💧</span>
+              <span class="type-name">Pump</span>
+              <span class="type-desc">Centrifugal / Slurry</span>
+            </button>
+            <button type="button" class="type-btn" data-type="motor">
+              <span class="type-icon">⚡</span>
+              <span class="type-name">Motor</span>
+              <span class="type-desc">Induction / VFD</span>
+            </button>
+            <button type="button" class="type-btn" data-type="gearbox">
+              <span class="type-icon">⚙️</span>
+              <span class="type-name">Gearbox</span>
+              <span class="type-desc">Helical / Planetary</span>
+            </button>
+            <button type="button" class="type-btn" data-type="compressor">
+              <span class="type-icon">📦</span>
+              <span class="type-name">Compressor</span>
+              <span class="type-desc">Screw / Piston</span>
+            </button>
+            <button type="button" class="type-btn" data-type="turbine">
+              <span class="type-icon">🌪️</span>
+              <span class="type-name">Turbine</span>
+              <span class="type-desc">Gas / Steam</span>
+            </button>
+            <button type="button" class="type-btn" data-type="fan">
+              <span class="type-icon">🌀</span>
+              <span class="type-name">Cooling Fan</span>
+              <span class="type-desc">Draft / Blower</span>
+            </button>
+            <button type="button" class="type-btn" data-type="hydraulic">
+              <span class="type-icon">🔧</span>
+              <span class="type-name">Hydraulic</span>
+              <span class="type-desc">Power Unit</span>
+            </button>
+            <button type="button" class="type-btn" data-type="conveyor">
+              <span class="type-icon">🔄</span>
+              <span class="type-name">Conveyor</span>
+              <span class="type-desc">Belt / Overland</span>
+            </button>
+            <button type="button" class="type-btn" data-type="cnc">
+              <span class="type-icon">🎛️</span>
+              <span class="type-name">CNC Center</span>
+              <span class="type-desc">Multi-Axis Mill</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- General Machine Identification -->
+        <div class="form-section">
+          <label class="form-section-title">2. General Identification & Placement</label>
+          <div class="form-row-grid">
+            <div class="form-field">
+              <label for="reg-asset-name">Machine / Equipment Name <span class="req">*</span></label>
+              <input type="text" id="reg-asset-name" class="form-input" required placeholder="e.g. Slurry Feed Pump-04" />
+            </div>
+            <div class="form-field">
+              <label for="reg-asset-id">Asset Tag / Serial ID <span class="req">*</span></label>
+              <input type="text" id="reg-asset-id" class="form-input" required placeholder="e.g. P-105" />
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-field">
+              <label for="reg-asset-location">Plant Bay / Location</label>
+              <select id="reg-asset-location" class="form-select">
+                <option value="Processing Bay 1">Processing Bay 1</option>
+                <option value="Processing Bay 2" selected>Processing Bay 2</option>
+                <option value="Drive Train B">Drive Train B</option>
+                <option value="Drive Train C">Drive Train C</option>
+                <option value="Intake Hall">Intake Hall</option>
+                <option value="Utility House 1">Utility House 1</option>
+                <option value="Utility House 2">Utility House 2</option>
+                <option value="Power Unit 1">Power Unit 1</option>
+                <option value="Press Line 3">Press Line 3</option>
+                <option value="Rooftop Bank A">Rooftop Bank A</option>
+                <option value="Bulk Transfer Yard">Bulk Transfer Yard</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="reg-asset-rpm">Operating Speed (RPM) <span class="req">*</span></label>
+              <input type="number" id="reg-asset-rpm" class="form-input" required value="1450" />
+            </div>
+          </div>
+
+          <div class="form-row-grid">
+            <div class="form-field">
+              <label for="reg-asset-tier">Criticality Tier</label>
+              <select id="reg-asset-tier" class="form-select">
+                <option value="Tier 1 - Critical (24/7 Monitoring)">Tier 1 - Critical (24/7 Real-Time Telemetry)</option>
+                <option value="Tier 2 - Essential">Tier 2 - Essential (Daily Shift Sampling)</option>
+                <option value="Tier 3 - Standard">Tier 3 - Standard / Balance of Plant</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="reg-asset-status">Commissioning Health Status</label>
+              <select id="reg-asset-status" class="form-select">
+                <option value="Healthy" selected>Healthy (Standard Baseline)</option>
+                <option value="At Risk">At Risk (Pre-existing Baseline Wear)</option>
+                <option value="Critical">Critical (Immediate Observation Required)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dynamic Fields Container (Populated based on Machine Type) -->
+        <div class="form-section">
+          <div class="dynamic-section-header">
+            <label class="form-section-title" id="dynamic-section-title">3. Pump-Specific Engineering & Sensor Parameters</label>
+            <span class="dynamic-schema-pill" id="dynamic-schema-badge">Pump Schema v2.4</span>
+          </div>
+          <div id="dynamic-fields-container" class="dynamic-fields-grid">
+            <!-- Dynamically populated fields -->
+          </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" id="btn-cancel-modal">Cancel</button>
+          <button type="submit" class="btn-primary-glow" id="btn-submit-asset">
+            <span>Register Asset & Connect Sensors</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js?v=3.1.0"></script>
 </body>
 </html>

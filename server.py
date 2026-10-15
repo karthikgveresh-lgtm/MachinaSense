@@ -55,8 +55,18 @@ class EngineService:
         self.latest_fault_prob = 0.02
         self.latest_class = "normal"
         self.latest_alert = False
+
+        # Dynamically registered machines
+        self.registered_assets = []
         
         self.load_model()
+
+    def add_asset(self, asset: dict):
+        with self.lock:
+            # Prevent duplicate registration by id
+            self.registered_assets = [a for a in self.registered_assets if a.get("id") != asset.get("id")]
+            self.registered_assets.insert(0, asset)
+            LOGGER.info("New asset registered: %s (%s)", asset.get("name"), asset.get("id"))
 
     def load_model(self):
         model_path = BASE_DIR / "machinasense_engine.joblib"
@@ -266,13 +276,19 @@ class EngineService:
                 {"id": "C-202", "name": "Conveyor-02 (C-202)", "type": "conveyor", "typeName": "Overland Belt Conveyor Drive", "location": "Bulk Transfer Yard", "rpm": 980, "installed": "2023-08-09", "health": 93, "vib": 1.65, "temp": 56.0, "current": 15.2, "acoustic": 62.5, "status": "Healthy"},
             ]
 
+            all_assets = list(self.registered_assets) + assets
+            total_assets = 48 + len(self.registered_assets)
+            extra_healthy = sum(1 for a in self.registered_assets if a.get("status") == "Healthy")
+            extra_risk = sum(1 for a in self.registered_assets if a.get("status") in ("At Risk", "Warning"))
+            extra_critical = sum(1 for a in self.registered_assets if a.get("status") == "Critical")
+
             return {
                 "active_mode": self.mode,
                 "summary": {
-                    "total": 48,
-                    "healthy": healthy_count,
-                    "at_risk": at_risk_count,
-                    "critical": critical_count,
+                    "total": total_assets,
+                    "healthy": healthy_count + extra_healthy,
+                    "at_risk": at_risk_count + extra_risk,
+                    "critical": critical_count + extra_critical,
                 },
                 "health_index": {
                     "score": health_index,
@@ -308,7 +324,7 @@ class EngineService:
                     "anomaly_score": self.latest_anomaly_score,
                     "alert_active": self.latest_alert,
                 },
-                "assets": assets,
+                "assets": all_assets,
                 "alerts": alerts,
             }
 
@@ -380,6 +396,7 @@ class MachinaHandler(BaseHTTPRequestHandler):
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", mime_type)
                 self.send_header("Content-Length", str(len(content)))
+                self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
                 self.end_headers()
                 self.wfile.write(content)
             except Exception as e:
@@ -412,6 +429,18 @@ class MachinaHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "message": "Settings saved successfully"}).encode("utf-8"))
+            except Exception as e:
+                self.send_error(HTTPStatus.BAD_REQUEST, str(e))
+        elif parsed.path == "/api/assets":
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8") if length > 0 else "{}"
+            try:
+                payload = json.loads(body)
+                service.add_asset(payload)
+                self.send_response(HTTPStatus.CREATED)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "asset": payload}).encode("utf-8"))
             except Exception as e:
                 self.send_error(HTTPStatus.BAD_REQUEST, str(e))
         else:
